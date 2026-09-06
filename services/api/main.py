@@ -127,6 +127,15 @@ def health():
     return {"ok": True, "sim_ts": now_sim().isoformat(sep=" "), "db": str(DB_PATH)}
 
 
+@app.get("/dataset")
+def dataset():
+    """What the imported file is, in one line: counts and the date window."""
+    c = {t: S.conn.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0] for t in ("orders", "legs", "drivers", "trucks", "trailers")}
+    w = row("SELECT MIN(arrival_ts) a, MAX(arrival_ts) b FROM dwell_history") or {}
+    src = "organizer export (TruckMate)" if (DB_PATH.parent / "portal-downloads" / "Hackathon_Data.xlsx").exists() else "synthetic sample"
+    return {**c, "in_region_orders": S.conn.execute("SELECT COUNT(*) FROM orders WHERE in_region=1").fetchone()[0], "window": [w.get("a"), w.get("b")], "source": src}
+
+
 @app.get("/data-quality")
 def data_quality():
     return rows("SELECT * FROM data_quality ORDER BY CASE severity WHEN 'error' THEN 0 WHEN 'warn' THEN 1 ELSE 2 END, rule")
