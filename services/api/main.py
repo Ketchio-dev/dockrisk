@@ -570,7 +570,10 @@ def approve_charge(charge_id: int, a: ApproveIn):
 
 
 def upsert_exception(kind: str, severity: str, unit: str | None, driver: str | None, visit_id: int | None, bill: str | None, title: str, detail: dict, actions: list):
-    ex = row("SELECT exception_id FROM exceptions WHERE kind=? AND IFNULL(visit_id,-1)=IFNULL(?,-1) AND IFNULL(unit,'')=IFNULL(?,'') AND status='open'", kind, visit_id, unit)
+    if kind == "closure" and detail.get("id"):
+        ex = row("SELECT exception_id FROM exceptions WHERE kind='closure' AND status='open' AND json_extract(detail_json,'$.id')=?", str(detail["id"]))
+    else:
+        ex = row("SELECT exception_id FROM exceptions WHERE kind=? AND IFNULL(visit_id,-1)=IFNULL(?,-1) AND IFNULL(unit,'')=IFNULL(?,'') AND status='open'", kind, visit_id, unit)
     ts = now_sim().isoformat(sep=" ")
     if ex:
         S.conn.execute("UPDATE exceptions SET sim_ts=?, severity=?, title=?, detail_json=?, proposed_actions_json=? WHERE exception_id=?",
@@ -620,6 +623,16 @@ def refresh_exceptions():
         still = row("SELECT 1 FROM assignments WHERE bill_number=? AND driver_name=? AND status IN ('offered','accepted')", e["bill_number"], e["driver_name"])
         if not still:
             S.conn.execute("UPDATE exceptions SET status='resolved', resolved_ts=?, resolution='load reassigned' WHERE exception_id=?", (now.isoformat(sep=" "), e["exception_id"]))
+    # live severe 511 incidents become inbox items only when a tracked truck is within 15 km — otherwise they are map markers
+    fleet_pos = rows("""SELECT t.unit, t.lat, t.lon FROM telemetry t JOIN (SELECT unit, MAX(sim_ts) m FROM telemetry GROUP BY unit) x ON x.unit=t.unit AND x.m=t.sim_ts""")
+    for inc in [i for i in fetch_incidents() if i["severity"] == "severe"]:
+        near = [f["unit"] for f in fleet_pos if haversine_km(f["lat"], f["lon"], inc["lat"], inc["lon"]) <= 15]
+        if not near:
+            continue
+        title = f"[511 live] {inc['road']} {inc['direction'] or ''}: {inc['description'][:100]} — near {', '.join(near[:3])}"
+        upsert_exception("closure", "warn", near[0], None, None, None, title,
+                         {"id": str(inc["id"]), "lat": inc["lat"], "lon": inc["lon"], "radius_km": 8, "source": inc["source"], "lanes": inc["lanes"], "full_closure": inc["full_closure"], "near_units": near},
+                         ["re-estimate ETAs for trucks in the corridor", "s.76 adverse conditions: possible 2 h extension — eligibility not assumed, review required"])
     S.conn.execute("""UPDATE exceptions SET status='resolved', resolved_ts=?, resolution='expired' WHERE status='open' AND kind='closure'
                       AND julianday(?) - julianday(sim_ts) > 2.0/24""", (now.isoformat(sep=" "), now.isoformat(sep=" ")))
     # resolve exceptions whose visit closed
@@ -743,6 +756,55 @@ def rescue(bill_number: str, exclude_driver: str | None = None):
     ranked = rank_candidates(now, load, cands, logs, exclude={exclude_driver} if exclude_driver else set())
     return {"bill_number": bill_number, "load": {k: (v.isoformat(sep=" ") if isinstance(v, datetime) else v) for k, v in load.items()},
             "candidates": ranked, "note": "eligibility filters + ranking with reasons; no legal candidate means exactly that"}
+
+
+# ---------------- Ontario 511 live incidents ----------------
+_INC_CACHE: dict = {"ts": None, "data": []}
+REGION = {"lat_min": 42.95, "lat_max": 44.45, "lon_min": -81.45, "lon_max": -78.20}
+HWYS = ("401", "403", "400", "QEW", "407", "410", "427", "404", "409", "406", "402")
+
+
+def fetch_incidents() -> list[dict]:
+    """Live Ontario 511 events inside the Southern Ontario region on 400-series highways. Cached 60 s (the
+    feed allows 10 calls / 60 s). Each event carries a severity class we derive: 'severe' = collision or a
+    full mainline closure; 'lane' = lanes affected; 'minor' = ramps and nightly maintenance."""
+    import httpx
+    now_wall = datetime.now()
+    if _INC_CACHE["ts"] and (now_wall - _INC_CACHE["ts"]).total_seconds() < 60:
+        return _INC_CACHE["data"]
+    try:
+        raw = httpx.get("https://511on.ca/api/v2/get/event", timeout=15).json()
+    except Exception:
+        return _INC_CACHE["data"]
+    out = []
+    for e in raw:
+        lat, lon = e.get("Latitude"), e.get("Longitude")
+        if lat is None or not (REGION["lat_min"] <= lat <= REGION["lat_max"] and REGION["lon_min"] <= lon <= REGION["lon_max"]):
+            continue
+        road = e.get("RoadwayName") or ""
+        if not any(h in road for h in HWYS):
+            continue
+        desc = e.get("Description") or ""
+        is_ramp = "ramp" in desc.lower()
+        if e.get("EventType") == "accidentsAndIncidents" or (e.get("IsFullClosure") and not is_ramp):
+            sev = "severe"
+        elif e.get("LanesAffected") and not is_ramp:
+            sev = "lane"
+        else:
+            sev = "minor"
+        out.append({"id": e.get("ID"), "type": e.get("EventType"), "subtype": e.get("EventSubType"), "road": road, "direction": e.get("DirectionOfTravel"),
+                    "lat": lat, "lon": lon, "description": desc[:220], "lanes": e.get("LanesAffected"), "full_closure": bool(e.get("IsFullClosure")),
+                    "severity": sev, "updated": e.get("LastUpdated"), "source": "Ontario 511 (live)"})
+    _INC_CACHE.update(ts=now_wall, data=out)
+    return out
+
+
+@app.get("/incidents")
+def incidents(min_severity: str = "minor"):
+    rank = {"minor": 0, "lane": 1, "severe": 2}
+    data = [i for i in fetch_incidents() if rank[i["severity"]] >= rank.get(min_severity, 0)]
+    return {"count": len(data), "fetched_at": _INC_CACHE["ts"].isoformat(sep=" ") if _INC_CACHE["ts"] else None, "incidents": data,
+            "note": "Ontario 511 open data, region-filtered to 400-series highways; severity classes are ours"}
 
 
 # ---------------- snapshot + stream ----------------

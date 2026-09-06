@@ -46,6 +46,7 @@ export default function Dispatcher() {
           <span className="rounded bg-slate-900 px-2 py-1 font-mono text-slate-300 ring-1 ring-slate-700">
             sim {snap?.sim?.sim_ts?.slice(0, 16) ?? "—"} {snap?.sim?.running ? `×${snap.sim.speed}` : "· paused"}
           </span>
+          <a href="/data" className="text-cyan-400 hover:underline">data</a>
           <a href="/policies" className="text-cyan-400 hover:underline">policies</a>
           <a href="/driver" className="text-cyan-400 hover:underline">driver app ↗</a>
         </div>

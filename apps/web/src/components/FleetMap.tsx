@@ -4,6 +4,8 @@ import { CircleMarker, MapContainer, Polygon, Polyline, TileLayer, Tooltip, Circ
 import "leaflet/dist/leaflet.css";
 import { API, type Exception, type Facility, type FleetRow } from "@/lib/api";
 
+type Incident = { id: string | number; type: string; road: string; direction: string | null; lat: number; lon: number; description: string; lanes: string | null; full_closure: boolean; severity: "severe" | "lane" | "minor"; updated: string | null; source: string };
+
 const OSM = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 const ESRI = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
 const REGION: [number, number][] = [[42.95, -81.45], [42.95, -78.2], [44.45, -78.2], [44.45, -81.45]];
@@ -15,6 +17,14 @@ export default function FleetMap({ fleet, facilities, exceptions, selected, onSe
 }) {
   const [satellite, setSatellite] = useState(false);
   const [crumbs, setCrumbs] = useState<[number, number][]>([]);
+  const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [showMinor, setShowMinor] = useState(false);
+  useEffect(() => {
+    let live = true;
+    const load = () => fetch(`${API}/incidents`).then((r) => r.json()).then((d: { incidents: Incident[] }) => live && setIncidents(d.incidents)).catch(() => {});
+    load(); const id = setInterval(load, 60000);
+    return () => { live = false; clearInterval(id); };
+  }, []);
   useEffect(() => {
     if (!selected) { setCrumbs([]); return; }
     let live = true;
@@ -48,6 +58,12 @@ export default function FleetMap({ fleet, facilities, exceptions, selected, onSe
           <Circle key={c.exception_id} center={[c.detail.lat as number, c.detail.lon as number]} radius={((c.detail.radius_km as number) ?? 5) * 1000}
             pathOptions={{ color: "#ef4444", weight: 2, fillOpacity: 0.12 }}><Tooltip>{c.title}</Tooltip></Circle>
         ))}
+        {incidents.filter((i) => showMinor || i.severity !== "minor").map((i) => (
+          <CircleMarker key={`inc-${i.id}`} center={[i.lat, i.lon]} radius={i.severity === "severe" ? 7 : i.severity === "lane" ? 5 : 3}
+            pathOptions={{ color: "#0f172a", weight: 1, fillColor: i.severity === "severe" ? "#ef4444" : i.severity === "lane" ? "#f97316" : "#a16207", fillOpacity: 0.85 }}>
+            <Tooltip direction="top" offset={[0, -6]}><b>{i.road} {i.direction ?? ""}</b> · {i.type === "accidentsAndIncidents" ? "incident" : "roadwork"}{i.full_closure ? " · FULL CLOSURE" : ""}<br />{i.description}<br /><span style={{ opacity: 0.7 }}>{i.lanes ?? ""} · {i.source}</span></Tooltip>
+          </CircleMarker>
+        ))}
         {crumbs.length > 1 && <Polyline positions={crumbs} pathOptions={{ color: "#22d3ee", weight: 3, opacity: 0.8 }} />}
         {fleet.map((f) => {
           const atDock = !!f.visit; const isSel = f.unit === selected;
@@ -66,6 +82,9 @@ export default function FleetMap({ fleet, facilities, exceptions, selected, onSe
         })}
       </MapContainer>
       <div className="absolute right-3 top-3 z-[1000] flex gap-2">
+        <button onClick={() => setShowMinor((s) => !s)} className="rounded bg-slate-900/90 px-3 py-1.5 text-xs font-medium text-slate-100 shadow ring-1 ring-slate-600 hover:bg-slate-800" title="Ontario 511 live events on 400-series highways in the region">
+          511 live · {incidents.filter((i) => i.severity !== "minor").length} {showMinor ? `(+${incidents.filter((i) => i.severity === "minor").length} minor)` : ""}
+        </button>
         <button onClick={() => setSatellite((s) => !s)} className="rounded bg-slate-900/90 px-3 py-1.5 text-xs font-medium text-slate-100 shadow ring-1 ring-slate-600 hover:bg-slate-800">
           {satellite ? "Map view" : "Satellite view"}
         </button>
@@ -76,7 +95,8 @@ export default function FleetMap({ fleet, facilities, exceptions, selected, onSe
         <span className="mr-3"><i className="inline-block h-2.5 w-2.5 rounded-full bg-red-500" /> HOS margin &lt; 1.5 h</span>
         <span className="mr-3"><i className="inline-block h-2.5 w-4 border-2 border-blue-500" /> property</span>
         <span className="mr-3"><i className="inline-block h-2.5 w-4 border-2 border-amber-500" /> dock</span>
-        <span><i className="inline-block h-2.5 w-4 border border-dashed border-slate-400" /> centroid (sim geometry)</span>
+        <span className="mr-3"><i className="inline-block h-2.5 w-4 border border-dashed border-slate-400" /> centroid (sim geometry)</span>
+        <span><i className="inline-block h-2 w-2 rounded-full bg-orange-500" /> 511 live lane closure · <i className="inline-block h-2.5 w-2.5 rounded-full bg-red-500" /> incident / full closure</span>
         {sel && <div className="mt-1 text-cyan-300">breadcrumbs: {sel.unit} · {crumbs.length} pings · odometer {sel.odometer_km ?? 0} km</div>}
       </div>
     </div>

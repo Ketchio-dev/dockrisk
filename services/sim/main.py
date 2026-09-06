@@ -155,14 +155,23 @@ class Sim:
         self.hero_next = next_bill
         # background trucks: two short legs each between centroid cities
         cities = [c for c in ("MISSISSAUGA", "BRAMPTON", "GUELPH", "CAMBRIDGE", "WHITBY", "OSHAWA", "HAMILTON", "BURLINGTON", "OAKVILLE", "KITCHENER") if c in by_city]
+        def appt_after(start_pos, dest, t0, extra_min=15):
+            """Appointment = expected arrival (great-circle x1.3 at 75 km/h) + slack, rounded up to the quarter hour."""
+            km = haversine_km(start_pos, dest) * 1.3
+            eta = t0 + timedelta(hours=km / 75.0, minutes=extra_min)
+            return eta.replace(minute=(eta.minute // 15) * 15, second=0) + timedelta(minutes=15)
         for i, d in enumerate(others):
             a, b = cities[(2 * i) % len(cities)], cities[(2 * i + 1) % len(cities)]
             bill = pick_bill(a, b)
+            start = (by_city[cities[(2 * i + 3) % len(cities)]]["lat"], by_city[cities[(2 * i + 3) % len(cities)]]["lon"])
+            fa, fb = by_city[a], by_city[b]
+            t_pick = appt_after(start, (fa["lat"], fa["lon"]), self.t)
+            t_delv = appt_after((fa["lat"], fa["lon"]), (fb["lat"], fb["lon"]), t_pick + timedelta(minutes=40 + 10 * i))
             self.trucks.append(Truck(
                 unit=units[i + 1], driver=d["name"], cycle=d["cycle"] or 1, remaining_cycle_h=d["remaining_can_7"], shift_onduty_so_far_h=1.0 + i * 0.5,
-                stops=[Stop(by_city[a], "pickup", bill["bill_number"], day + timedelta(hours=8, minutes=15 * i), dwell_min=40 + 10 * i, customer=bill["customer"]),
-                       Stop(by_city[b], "delivery", bill["bill_number"], day + timedelta(hours=11, minutes=20 * i), dwell_min=35 + 15 * i, customer=bill["customer"])],
-                pos=(by_city[cities[(2 * i + 3) % len(cities)]]["lat"], by_city[cities[(2 * i + 3) % len(cities)]]["lon"])))
+                stops=[Stop(fa, "pickup", bill["bill_number"], t_pick, dwell_min=40 + 10 * i, customer=bill["customer"]),
+                       Stop(fb, "delivery", bill["bill_number"], t_delv, dwell_min=35 + 15 * i, customer=bill["customer"])],
+                pos=start))
         # relief trucks on standby (no stops): the rescue candidates. Parked at centroid facilities near the corridor.
         relief_cities = [c for c in ("WOODSTOCK", "CAMBRIDGE", "KITCHENER", "GUELPH") if c in by_city][:2]
         fresh = [d for d in drivers if d["name"] not in {t.driver for t in self.trucks} and d["remaining_can_7"] and d["remaining_can_7"] > 45][:2]
@@ -170,11 +179,23 @@ class Sim:
             f = by_city[c]
             self.trucks.append(Truck(unit=units[6 + i] if len(units) > 6 + i else f"R{i+1}", driver=d["name"], cycle=d["cycle"] or 1, remaining_cycle_h=d["remaining_can_7"],
                                      shift_onduty_so_far_h=0.5 + i, stops=[], pos=(f["lat"] + 0.02, f["lon"] + 0.02), state="standby"))
-        # scripted events
-        self.events = [
-            (self.t + timedelta(minutes=25), "closure", {"title": "HWY 401 WB near Cambridge: collision, 2 lanes blocked", "factor": 0.45,
-                                                          "lat": 43.39, "lon": -80.35, "radius_km": 12}),
-        ]
+        # scripted events. The corridor slowdown is taken from a REAL Ontario 511 incident on the 401/403 between
+        # Milton and London when one exists right now; otherwise a synthetic one, labeled as such.
+        live = []
+        try:
+            live = [i for i in self.get("/incidents", min_severity="lane")["incidents"] if any(h in i["road"] for h in ("401", "403"))
+                    and 42.9 <= i["lat"] <= 43.7 and -81.4 <= i["lon"] <= -79.7]
+        except Exception:
+            pass
+        live.sort(key=lambda i: (0 if i["severity"] == "severe" else 1))
+        if live:
+            i = live[0]
+            ev = {"title": f"[511 live] {i['road']} {i['direction'] or ''}: {i['description'][:90]}", "factor": 0.45 if i["severity"] == "severe" else 0.7,
+                  "lat": i["lat"], "lon": i["lon"], "radius_km": 8, "source": i["source"], "id": str(i["id"])}
+        else:
+            ev = {"title": "HWY 401 WB near Cambridge: collision, 2 lanes blocked (simulated — no live 511 incident on the corridor right now)",
+                  "factor": 0.45, "lat": 43.39, "lon": -80.35, "radius_km": 12, "source": "simulated"}
+        self.events = [(self.t + timedelta(minutes=25), "closure", ev)]
 
     def seed_api(self, reset: bool):
         if reset:
@@ -311,7 +332,7 @@ class Sim:
                 for tr in self.trucks:
                     tr.slow_factor = e["factor"]
                 self.post("/exceptions", {"kind": "closure", "severity": "warn", "title": e["title"],
-                                          "detail": {"lat": e["lat"], "lon": e["lon"], "radius_km": e["radius_km"], "speed_factor": e["factor"], "source": "simulated (Ontario 511 style)"},
+                                          "detail": {"id": e.get("id"), "lat": e["lat"], "lon": e["lon"], "radius_km": e["radius_km"], "speed_factor": e["factor"], "source": e.get("source", "simulated")},
                                           "proposed_actions": ["re-estimate ETAs for trucks in the corridor",
                                                                "s.76 adverse conditions: possible 2 h extension — eligibility not assumed, review required"]})
 
