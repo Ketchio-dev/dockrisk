@@ -60,7 +60,7 @@ export default function Dispatcher() {
         <div className="flex items-center gap-4 text-xs">
           {exposure && (
             <span className="text-gray-500" title={exposure.wording}>
-              Detention exposure, modeled from 62 days of the carrier&apos;s data: <span className="num font-semibold text-gray-900">${exposure.monthly_exposure_low.toLocaleString()}–{exposure.monthly_exposure_high.toLocaleString()}</span> per month · <a href="/data">assumptions</a>
+              Modeled exposure <span className="num font-semibold text-gray-900">${Math.round(exposure.monthly_exposure_low / 1000)}k–{Math.round(exposure.monthly_exposure_high / 1000)}k</span>/mo · <a href="/data">assumptions</a>
             </span>
           )}
           <SimControls sim={snap?.sim} />
@@ -93,13 +93,14 @@ export default function Dispatcher() {
             );
           })()}
           <section>
-            <div className="mb-1 flex items-baseline justify-between"><h2 className="text-sm font-semibold text-gray-900">At facilities</h2><span className="label">physical dwell · billing clock · hours-of-service margin</span></div>
+            <div className="mb-1 flex items-baseline justify-between"><h2 className="text-sm font-semibold text-gray-900">At facilities</h2><span className="label">{snap?.visits.length ?? 0} trucks · select a row for details</span></div>
             <div className="rule-t">
               {(snap?.visits ?? []).map((v, i) => {
                 const stage = storyStage(v, snap?.exceptions ?? [], snap?.assignments ?? [], snap?.charges ?? []);
                 const rescue = (snap?.assignments ?? []).find((a) => a.bill_number === v.next_load?.bill_number && a.status === "accepted" && (a.reason_json ?? "").includes('"via": "rescue"'));
                 const times = [v.timestamps.property_entered_ts, v.timestamps.checked_in_ts ?? v.timestamps.at_dock_ts, null, rescue ? (rescue as { updated_ts?: string }).updated_ts ?? null : null, v.timestamps.gate_exited_ts ?? v.timestamps.released_ts];
-                return <VisitCard key={v.visit_id} v={v} selected={v.unit === selected} onSelect={setSelected} story={i === 0 || v.next_load ? { stage, times } : undefined} />;
+                const expanded = selected ? v.unit === selected : i === 0;   // the selected row opens; with nothing selected, the most urgent one does
+                return <VisitCard key={v.visit_id} v={v} selected={v.unit === selected} onSelect={setSelected} story={{ stage, times }} expanded={expanded} />;
               })}
               {snap && snap.visits.length === 0 && <p className="py-3 text-sm text-gray-500">No truck is inside a facility right now.</p>}
             </div>

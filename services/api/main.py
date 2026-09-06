@@ -591,7 +591,26 @@ def approve_charge(charge_id: int, a: ApproveIn):
     return row("SELECT charge_id, status, approved_by, approved_ts, amount FROM detention_charges WHERE charge_id=?", charge_id)
 
 
+def headline_for(kind: str, title: str, detail: dict) -> str:
+    """Short, number-bearing first line for the inbox; the full title is kept as the detail line."""
+    drv = title.split(":")[0] if ":" in title else ""
+    if kind == "hos_margin":
+        m = detail.get("margin_h")
+        return f"{drv}: {m:+.1f} h to a legal stop after this wait" if m is not None else title
+    if kind == "next_load_at_risk":
+        nxt = detail.get("next") or {}
+        return f"{drv}: next load {nxt.get('bill_number', '')} at risk" if nxt else title
+    if kind == "detention_risk":
+        m = detail.get("minutes_until_billable")
+        past = detail.get("minutes_past_free")
+        return f"{drv}: billable in {int(m)} min" if m is not None else f"{drv}: {int(past)} min past free time" if past is not None else title
+    if kind == "closure":
+        return title.split(" — ")[0]
+    return title
+
+
 def upsert_exception(kind: str, severity: str, unit: str | None, driver: str | None, visit_id: int | None, bill: str | None, title: str, detail: dict, actions: list):
+    detail = {**detail, "headline": headline_for(kind, title, detail)}
     if kind == "closure" and detail.get("id"):
         ex = row("SELECT exception_id FROM exceptions WHERE kind='closure' AND status='open' AND json_extract(detail_json,'$.id')=?", str(detail["id"]))
     else:

@@ -35,29 +35,39 @@ const sevBar: Record<string, string> = { critical: "bar-bad", warn: "bar-warn", 
 const sevWord: Record<string, string> = { critical: "Critical", warn: "Warning", info: "Info" };
 
 export function ExceptionInbox({ exceptions, onRescue, onSelect }: { exceptions: Exception[]; onRescue: (bill: string, driver: string | null) => void; onSelect: (unit: string | null) => void }) {
+  const [show511, setShow511] = useState(false);
+  const live = exceptions.filter((e) => e.kind === "closure" && /511/.test(e.title));
+  const rest = exceptions.filter((e) => !live.includes(e));
+  const firstAction = rest.findIndex((e) => e.bill_number && e.proposed_actions.some((a) => /reassign|relief|rescue/i.test(a)));
+  const Row = ({ e, action }: { e: Exception; action: boolean }) => (
+    <div className={`rule-b py-2 pl-3 ${sevBar[e.severity]}`}>
+      <div className="flex items-baseline justify-between gap-3">
+        <button className="truncate text-left text-sm text-gray-900 hover:underline" onClick={() => onSelect(e.unit)} title={e.title}>{(e.detail.headline as string | undefined) ?? e.title.replace(/^\[511 live\] /, "")}</button>
+        <span className={`label shrink-0 ${e.severity === "critical" ? "t-bad" : e.severity === "warn" ? "t-warn" : ""}`}>{sevWord[e.severity]} · <span className="num">{hhmm(e.sim_ts)}</span></span>
+      </div>
+      {action && <div className="mt-0.5 text-xs text-gray-500">{e.title.replace(/^[^:]+: /, "")}</div>}
+      {action && e.bill_number && (
+        <div className="mt-1.5 flex items-center gap-3 text-xs text-gray-500">
+          <button onClick={() => onRescue(e.bill_number!, e.driver_name)} className="btn btn-sm btn-primary">Find a relief driver</button>
+          <span>or request a revised appointment</span>
+        </div>
+      )}
+    </div>
+  );
   return (
     <section>
       <div className="mb-1 flex items-baseline justify-between"><h2 className="text-sm font-semibold text-gray-900">Exceptions</h2><span className="label">{exceptions.length} open</span></div>
       <div className="rule-t">
-        {exceptions.length === 0 && <p className="py-3 text-sm text-gray-500">Nothing open. Items appear as a visit nears its free-time threshold or a driver&apos;s hours run thin.</p>}
-        {exceptions.map((e) => {
-          const rescue = e.proposed_actions.find((a) => /reassign|relief|rescue/i.test(a));
-          return (
-            <div key={e.exception_id} className={`rule-b py-2.5 pl-3 ${sevBar[e.severity]}`}>
-              <div className="flex items-start justify-between gap-3">
-                <button className="text-left text-sm leading-snug text-gray-900 hover:underline" onClick={() => onSelect(e.unit)}>{e.title}</button>
-                <span className={`label shrink-0 ${e.severity === "critical" ? "t-bad" : e.severity === "warn" ? "t-warn" : ""}`}>{sevWord[e.severity]}</span>
-              </div>
-              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
-                <span className="num">{hhmm(e.sim_ts)} ET</span>
-                {e.unit && <span>{e.unit}{e.driver_name ? ` · ${e.driver_name}` : ""}</span>}
-                <span className="text-gray-400">{e.kind.replace(/_/g, " ")}</span>
-                {rescue && e.bill_number && <button onClick={() => onRescue(e.bill_number!, e.driver_name)} className="btn btn-sm btn-primary">Find a relief driver</button>}
-                {e.proposed_actions.filter((a) => a !== rescue).map((a, i) => <span key={i} className="text-gray-600">· {a}</span>)}
-              </div>
-            </div>
-          );
-        })}
+        {exceptions.length === 0 && <p className="py-3 text-sm text-gray-500">Nothing open.</p>}
+        {rest.map((e, i) => <Row key={e.exception_id} e={e} action={i === firstAction} />)}
+        {live.length > 0 && (
+          <div className="rule-b py-2 pl-3 bar-none">
+            <button className="flex w-full items-baseline justify-between text-left text-sm text-gray-700" onClick={() => setShow511((v) => !v)}>
+              <span>Ontario 511 · {live.length} live {live.length === 1 ? "event" : "events"} near your trucks</span><span className="label">{show511 ? "hide" : "show"}</span>
+            </button>
+            {show511 && live.map((e) => <div key={e.exception_id} className="mt-1.5 truncate text-xs text-gray-500" title={e.title}>{e.title.replace(/^\[511 live\] /, "")}</div>)}
+          </div>
+        )}
       </div>
     </section>
   );
@@ -68,13 +78,13 @@ function Clock({ label, value, sub, tone }: { label: string; value: string; sub?
   return (
     <div>
       <div className="label">{label}</div>
-      <div className={`num text-[22px] font-semibold leading-tight ${t}`}>{value}</div>
+      <div className={`num text-[20px] font-semibold leading-tight ${t}`}>{value}</div>
       {sub && <div className="text-[11px] text-gray-500">{sub}</div>}
     </div>
   );
 }
 
-export function VisitCard({ v, selected, onSelect, story }: { v: Visit; selected: boolean; onSelect: (unit: string | null) => void; story?: { stage: number; times: (string | null)[] } }) {
+export function VisitCard({ v, selected, onSelect, story, expanded }: { v: Visit; selected: boolean; onSelect: (unit: string | null) => void; story?: { stage: number; times: (string | null)[] }; expanded: boolean }) {
   const mtb = v.minutes_until_billable;
   const billingTone = mtb == null ? "bad" : mtb <= 30 ? "warn" : "ok";
   const m = v.hos?.margin_h;
@@ -86,7 +96,7 @@ export function VisitCard({ v, selected, onSelect, story }: { v: Visit; selected
         <span className="text-sm font-semibold text-gray-900">{v.driver_name ?? v.unit} <span className="font-normal text-gray-500">· {v.unit}</span></span>
         <span className="text-xs text-gray-500">{v.facility?.name} · {v.stop_kind} · <span className="text-gray-700">{v.state.replace(/_/g, " ").toLowerCase()}</span></span>
       </button>
-      {story && <div className="mt-2"><StoryStrip stage={story.stage} times={story.times} /></div>}
+      {expanded && story && <div className="mt-2"><StoryStrip stage={story.stage} times={story.times} /></div>}
       <div className="mt-2 grid grid-cols-3 gap-4">
         <Clock label="Physical dwell" value={fmtMin(v.physical_dwell_min)} sub={`since ${hhmm(v.timestamps.property_entered_ts)} ${TZ}`} tone="muted" />
         <Clock label={mtb == null ? "Billable detention" : "Billable in"} value={mtb == null ? `${fmtMin(v.qualifying_dwell_min - v.policy.free_time_min)} · $${v.amount_so_far.toFixed(0)}` : fmtMin(mtb)}
@@ -94,13 +104,21 @@ export function VisitCard({ v, selected, onSelect, story }: { v: Visit; selected
         <Clock label="HOS departure margin" value={m == null ? "no duty log" : fmtH(m)}
           sub={v.hos ? `wait ~${Math.round(v.hos.wait_more_min)}m + ${v.hos.drive_to_safe_h}h to legal stop · ${v.hos.binding}` : undefined} tone={hosTone} />
       </div>
-      {p && p.n > 0 && (
+      {!expanded && (v.hos?.next_load || (p && p.n > 0)) && (
+        <div className="mt-1.5 truncate text-xs text-gray-500">
+          {v.hos?.next_load && <span className={`font-medium ${v.hos.next_load.verdict === "feasible" ? "t-ok" : "t-bad"}`}>{v.hos.next_load.verdict === "feasible" ? "Next load feasible" : "Next load at risk"}</span>}
+          {v.hos?.next_load && p && p.n > 0 && " · "}
+          {p && p.n > 0 && <span>{Math.round((p.p_over_free ?? 0) * 100)}% chance of exceeding free time</span>}
+          <span className="text-gray-400"> · select for details</span>
+        </div>
+      )}
+      {expanded && p && p.n > 0 && (
         <div className="mt-2 text-xs text-gray-500">
           Prediction: <span className="num text-gray-900">{Math.round((p.p_over_free ?? 0) * 100)}%</span> chance of exceeding free time given {fmtMin(v.physical_dwell_min)} waited ·
           median <span className="num text-gray-900">+{Math.round(p.median_remaining_min ?? 0)}m</span>, p90 +{Math.round(p.p90_remaining_min ?? 0)}m <span className="text-gray-400">· {p.grain} history, n={p.n}</span>
         </div>
       )}
-      {v.next_load && (
+      {expanded && v.next_load && (
         <div className="mt-1 text-xs text-gray-500">
           Next load: <span className="text-gray-900">{v.next_load.bill_number}</span> {cityCase(v.next_load.orig_city)} → {cityCase(v.next_load.dest_city)} · pickup by {hhmm(v.next_load.pickup_by_end)}
           {v.hos?.next_load && (
@@ -111,13 +129,15 @@ export function VisitCard({ v, selected, onSelect, story }: { v: Visit; selected
           )}
         </div>
       )}
-      {v.review_reasons.length > 0 && <div className="mt-1 text-xs t-warn">Review: {v.review_reasons.join(" · ")}</div>}
+      {expanded && v.review_reasons.length > 0 && <div className="mt-1 text-xs t-warn">Review: {v.review_reasons.join(" · ")}</div>}
     </div>
   );
 }
 
 export function ChargesList({ charges }: { charges: Charge[] }) {
   const [busy, setBusy] = useState<number | null>(null);
+  const [all, setAll] = useState(false);
+  const shown = all ? charges : charges.slice(0, 3);
   const approve = async (id: number, status: string) => { setBusy(id); try { await api(`/charges/${id}/approve`, { method: "POST", body: JSON.stringify({ actor: "dispatcher", status }) }); } finally { setBusy(null); } };
   return (
     <section>
@@ -126,12 +146,11 @@ export function ChargesList({ charges }: { charges: Charge[] }) {
         <colgroup><col /><col className="w-[64px]" /><col className="w-[56px]" /><col className="w-[64px]" /><col className="w-[104px]" /></colgroup>
         <thead className="label"><tr className="rule-b"><th className="py-1 text-left font-normal">Stop</th><th className="py-1 pr-2 text-right font-normal">Qualifying</th><th className="py-1 pr-2 text-right font-normal">Billable</th><th className="py-1 pr-2 text-right font-normal">Amount</th><th className="py-1 text-right font-normal">Status</th></tr></thead>
         <tbody>
-          {charges.map((c) => (
+          {shown.map((c) => (
             <tr key={c.charge_id} className="rule-b align-top">
               <td className="py-2 pr-2">
                 <div className="truncate text-gray-900">{c.facility_name} <span className="num text-gray-500">· {c.bill_number ?? "no bill"}</span> · <a href={`/evidence/${c.visit_id}`} target="_blank">Packet</a></div>
-                <div className="text-[11px] text-gray-500">{c.party} · confidence {c.confidence}{c.review_required ? ` · ${c.reason_codes.length} review reason${c.reason_codes.length === 1 ? "" : "s"}` : ""}</div>
-                {c.review_required && <div className="mt-0.5 text-[11px] t-warn">{c.reason_codes.join("; ")}</div>}
+                <div className="text-[11px] text-gray-500">{c.party}{c.review_required ? <span className="t-warn" title={c.reason_codes.join("; ")}> · {c.reason_codes.length} to review</span> : " · ready"}</div>
               </td>
               <td className="num py-2 pr-2 text-right">{fmtMin(c.qualifying_dwell_min)}</td>
               <td className="num py-2 pr-2 text-right">{c.billable_min}m</td>
@@ -146,6 +165,7 @@ export function ChargesList({ charges }: { charges: Charge[] }) {
           {charges.length === 0 && <tr><td colSpan={5} className="py-3 text-gray-500">No visits closed yet.</td></tr>}
         </tbody>
       </table>
+      {charges.length > 3 && <button onClick={() => setAll((v) => !v)} className="mt-1 text-xs">{all ? "Show fewer" : `Show all ${charges.length}`}</button>}
     </section>
   );
 }
