@@ -6,7 +6,9 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   return r.json();
 }
 
-export type Hos = { remaining_drive_h: number; remaining_onduty_h: number; remaining_elapsed_h: number; binding: string; status: string; provenance?: string; cycle_note?: string | null };
+export type DutySeg = { status: string; start: string; end: string };
+export type Hos = { remaining_drive_h: number; remaining_onduty_h: number; remaining_elapsed_h: number; binding: string; status: string; provenance?: string; cycle_note?: string | null;
+  shift_start?: string | null; shift_onduty_h?: number; shift_driving_h?: number; segments?: DutySeg[] };
 export type FleetRow = {
   unit: string; driver_name: string | null; lat: number; lon: number; speed_kmh: number; heading: number | null; odometer_km: number | null;
   duty_status: string | null; sim_ts: string; visit: { visit_id: number; state: string; facility_id: number } | null; hos?: Hos;
@@ -49,6 +51,7 @@ export type Exposure = {
   n?: number; window_days: number; window: string[]; monthly_exposure_low: number; monthly_exposure_high: number; total_billable_hours: number;
   by_kind: Record<string, { n: number; median_min: number; p90_min: number; over_free_n: number; over_free_pct: number; within_10min_of_threshold_n: number; billable_hours: number }>;
   assumptions: Record<string, unknown>; wording: string;
+  histogram?: { bin_min: number; max_min: number; counts: number[]; overflow: number; n: number };
 };
 
 export const fmtMin = (m: number | null | undefined) => { if (m == null) return "—"; const t = Math.round(m); return `${Math.floor(t / 60)}h ${String(t % 60).padStart(2, "0")}m`; };

@@ -140,6 +140,16 @@ def _segments(events: list[DutyEvent], as_of: datetime, horizon_days: int = 14) 
     return segs
 
 
+def recent_segments(events: list[DutyEvent], as_of: datetime, hours: float = 24.0) -> list[dict]:
+    """Duty segments of the last `hours`, as plain dicts, for drawing a day bar or an ELD-style log grid."""
+    out = []
+    for s in _segments(events, as_of, horizon_days=max(1, int(hours // 24) + 1)):
+        a = max(s.start, as_of - timedelta(hours=hours))
+        if a < s.end:
+            out.append({"status": s.status, "start": a.isoformat(sep=" "), "end": s.end.isoformat(sep=" ")})
+    return out
+
+
 def _longest_consecutive_off(segs: list[Segment], min_h: float) -> list[tuple[datetime, datetime]]:
     """All maximal runs of OFF segments lasting >= min_h. Adjacent off/sleeper merge."""
     runs: list[tuple[datetime, datetime]] = []

@@ -18,7 +18,7 @@ from sse_starlette.sse import EventSourceResponse
 from core.analytics import build_dwell_history, build_dwell_model, exposure_summary, predict_remaining
 from core.db import DB_PATH, connect, init_schema
 from core.geofence import GeofenceIndex, GeofenceTracker
-from core.hos import DutyEvent, PlanStep, check_plan, compute_clocks, cycle_note, departure_margin, norm_cycle, seed_history_from_snapshot
+from core.hos import DutyEvent, PlanStep, check_plan, compute_clocks, cycle_note, departure_margin, norm_cycle, recent_segments, seed_history_from_snapshot
 from core.matching import haversine_km, rank_candidates
 from core.visits import VisitEngine
 
@@ -881,7 +881,10 @@ def snapshot():
             d = row("SELECT cycle FROM drivers WHERE name=?", f["driver_name"]) or {}
             c = compute_clocks(log, now, norm_cycle(d.get("cycle")))
             f["hos"] = {"remaining_drive_h": c.remaining_drive_h, "remaining_onduty_h": c.remaining_onduty_h, "remaining_elapsed_h": c.remaining_elapsed_h, "binding": c.binding, "status": c.current_status,
-                        "provenance": duty_provenance(f["driver_name"])["history"], "cycle_note": cycle_note(d.get("cycle"))}
+                        "provenance": duty_provenance(f["driver_name"])["history"], "cycle_note": cycle_note(d.get("cycle")),
+                        "shift_start": c.shift_start.isoformat(sep=" ") if c.shift_start else None,
+                        "shift_onduty_h": c.shift_onduty_h, "shift_driving_h": c.shift_driving_h,
+                        "segments": recent_segments(log, now, 24)}
     return {"sim": get_clock(), "fleet": fleet, "visits": visits(1), "exceptions": exceptions("open"),
             "charges": charges()[:20], "assignments": list_assignments(None, 1)[:50]}
 

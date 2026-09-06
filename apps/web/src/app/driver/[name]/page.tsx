@@ -1,6 +1,8 @@
 "use client";
 import { use, useEffect, useState } from "react";
 import { api, fmtH, fmtMin, hhmm, type Assignment, type Snapshot, type Visit, cityCase } from "@/lib/api";
+import { LogGrid } from "@/components/DayBar";
+import { Mark } from "@/components/Brand";
 
 export default function DriverApp({ params }: { params: Promise<{ name: string }> }) {
   const { name } = use(params);
@@ -17,39 +19,51 @@ export default function DriverApp({ params }: { params: Promise<{ name: string }
   const duty = (status: string) => act(() => api("/ingest/duty", { method: "POST", body: JSON.stringify({ driver_name: driver, ts: snap?.sim.sim_ts, status, source: "driver" }) }));
 
   const Btn = ({ children, onClick, primary = false }: { children: React.ReactNode; onClick: () => void; primary?: boolean }) => (
-    <button disabled={busy} onClick={onClick} className={`btn btn-lg w-full justify-center ${primary ? "btn-primary" : ""}`}>{children}</button>
+    <button disabled={busy} onClick={onClick} className={`btn btn-lg w-full ${primary ? "btn-primary" : ""}`}>{children}</button>
   );
   const nextStep = visit ? (!visit.timestamps.checked_in_ts ? "checked_in" : !visit.timestamps.service_complete_ts ? "service_complete" : !visit.timestamps.released_ts ? "released" : null) : null;
+  const now = snap?.sim.sim_ts;
+  const Big = ({ label, value, tone }: { label: string; value: string; tone?: "bad" | "warn" }) => (
+    <div><div className="label">{label}</div><div className={`display mt-1 text-[32px] ${tone === "bad" ? "t-bad" : tone === "warn" ? "t-warn" : ""}`}>{value}</div></div>
+  );
 
   return (
-    <main className="mx-auto min-h-screen max-w-md bg-white px-5 pb-8 pt-4 text-gray-900">
-      <header className="rule-b mb-4 flex items-baseline justify-between pb-3">
-        <h1 className="text-xl font-semibold">{driver} <span className="text-sm font-normal text-gray-500">{me?.unit ?? "no unit"}</span></h1>
-        <span className="num text-sm text-gray-500">{snap?.sim.sim_ts?.slice(11, 16)} ET</span>
+    <main className="surface mx-auto min-h-screen max-w-md px-5 pb-10 pt-4" style={{ boxShadow: "0 0 0 1px var(--rule)" }}>
+      <header className="rule-b mb-4 flex items-center justify-between pb-3">
+        <div className="flex items-center gap-2.5">
+          <Mark size={16} />
+          <h1 className="display text-[20px]">{driver} <span className="mono ink-3 text-[13px] font-normal">{me?.unit ?? "no unit"}</span></h1>
+        </div>
+        <div className="text-right">
+          <div className="display text-[20px]">{now?.slice(11, 16) ?? "——:——"}</div>
+          <div className="label -mt-0.5">ET · {me ? (me.duty_status ?? "—").replace("_", " ") : ""}</div>
+        </div>
       </header>
-      <p className="label mb-4">Duty-status companion — a prototype, not a certified ELD</p>
 
       {visit && (
-        <section className="mb-6">
-          <div className="mb-1 flex items-baseline justify-between"><h2 className="text-sm font-semibold">At {visit.facility?.name}</h2><span className="text-xs text-gray-500">{visit.state.replace(/_/g, " ").toLowerCase()}</span></div>
-          <ol className="mb-3 border-l-2 border-gray-200 pl-3 text-sm">
-            <li className="relative mb-1.5"><span className="absolute -left-[17px] top-1.5 h-2.5 w-2.5 rounded-full bg-gray-900" /><span className="text-gray-500">{visit.stop_kind}</span> · bill <span className="num">{visit.bill_number ?? "—"}</span></li>
-            <li className="relative"><span className="absolute -left-[17px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-gray-900 bg-white" /><span className="text-gray-500">appointment</span> <span className="num">{hhmm(visit.timestamps.appointment_start_ts)}</span> · arrived <span className="num">{hhmm(visit.timestamps.property_entered_ts)}</span></li>
-          </ol>
-          <div className="rule-t rule-b mb-3 grid grid-cols-2 gap-3 py-3">
-            <div><div className="label">Waiting</div><div className="num text-[26px] font-semibold leading-tight">{fmtMin(visit.physical_dwell_min)}</div></div>
-            <div><div className="label">{visit.minutes_until_billable == null ? "Detention so far" : "Free time left"}</div><div className={`num text-[26px] font-semibold leading-tight ${visit.minutes_until_billable == null ? "t-warn" : ""}`}>{visit.minutes_until_billable == null ? `$${visit.amount_so_far.toFixed(0)}` : fmtMin(visit.minutes_until_billable)}</div></div>
+        <section className="mb-7">
+          <div className="mb-2 flex items-baseline justify-between"><h2 className="h">At {visit.facility?.name}</h2><span className="text-xs ink-3">{visit.state.replace(/_/g, " ").toLowerCase()}</span></div>
+          <div className="mb-3 text-sm ink-2">
+            <span className="capitalize">{visit.stop_kind}</span> · bill <span className="mono">{visit.bill_number ?? "—"}</span> · appointment <span className="num">{hhmm(visit.timestamps.appointment_start_ts)}</span> · arrived <span className="num">{hhmm(visit.timestamps.property_entered_ts)}</span>
           </div>
-          {visit.hos && visit.hos.margin_h < 0.5 && <div className="bar-bad mb-3 pl-3 text-sm text-gray-900">Your hours: <span className="num t-bad">{fmtH(visit.hos.margin_h)}</span> margin to reach a legal stop after this wait. Dispatch has been alerted.</div>}
+          <div className="rule-t rule-b mb-3 grid grid-cols-2 gap-3 py-3">
+            <Big label="Waiting" value={fmtMin(visit.physical_dwell_min)} />
+            <Big label={visit.minutes_until_billable == null ? "Detention so far" : "Free time left"} value={visit.minutes_until_billable == null ? `$${visit.amount_so_far.toFixed(0)}` : fmtMin(visit.minutes_until_billable)} tone={visit.minutes_until_billable == null ? "warn" : undefined} />
+          </div>
+          {visit.hos && visit.hos.margin_h < 0.5 && <div className="bar-bad mb-3 pl-3 text-sm">Your hours: <span className="display t-bad text-[15px]">{fmtH(visit.hos.margin_h)}</span> margin to reach a legal stop after this wait. Dispatch has been alerted.</div>}
           {visit.on_time == null && (
             <div className="mb-3">
               <div className="label mb-1.5">How did you arrive?</div>
-              <div className="grid grid-cols-4 gap-2">{[["early", "Early"], ["on_time", "On time"], ["late", "Late"], ["wrong_entrance", "Wrong gate"]].map(([c, l]) => <button key={c} disabled={busy} onClick={() => ev("arrival_class", { value: c })} className="btn justify-center">{l}</button>)}</div>
+              <div className="grid grid-cols-4 gap-2">{[["early", "Early"], ["on_time", "On time"], ["late", "Late"], ["wrong_entrance", "Wrong gate"]].map(([c, l]) => <button key={c} disabled={busy} onClick={() => ev("arrival_class", { value: c })} className="btn">{l}</button>)}</div>
+            </div>
+          )}
+          {!visit.timestamps.checked_in_ts && (
+            <div className="mb-2 grid gap-2">
+              <Btn primary={nextStep === "checked_in"} onClick={() => ev("checked_in", { at: "now" })}>Checked in now</Btn>
+              <Btn onClick={() => ev("checked_in", { at: "arrival" })}>Already checked in at arrival, {hhmm(visit.timestamps.property_entered_ts)}</Btn>
             </div>
           )}
           <div className="grid grid-cols-2 gap-2">
-            {!visit.timestamps.checked_in_ts && <Btn primary={nextStep === "checked_in"} onClick={() => ev("checked_in", { at: "now" })}>Checked in now</Btn>}
-            {!visit.timestamps.checked_in_ts && <Btn onClick={() => ev("checked_in", { at: "arrival" })}>Checked in at arrival, {hhmm(visit.timestamps.property_entered_ts)}</Btn>}
             {!visit.timestamps.at_dock_ts && <Btn onClick={() => ev("door_assigned")}>Door assigned</Btn>}
             {!visit.timestamps.service_complete_ts && <Btn primary={nextStep === "service_complete"} onClick={() => ev("service_complete")}>Loading done</Btn>}
             {!visit.timestamps.released_ts && <Btn primary={nextStep === "released"} onClick={() => ev("released")}>Released, leaving</Btn>}
@@ -57,29 +71,37 @@ export default function DriverApp({ params }: { params: Promise<{ name: string }
         </section>
       )}
 
-      <section className="mb-6">
-        <div className="mb-2 flex items-baseline justify-between"><h2 className="text-sm font-semibold">Hours</h2><span className="text-sm text-gray-500">now <span className="font-medium text-gray-900">{(me?.duty_status ?? "—").replace("_", " ")}</span></span></div>
+      <section className="mb-7">
+        <div className="mb-2 flex items-baseline justify-between"><h2 className="h">Hours</h2>{me?.hos && <span className="text-xs ink-3">limiting: {me.hos.binding}</span>}</div>
         {me?.hos ? (
-          <div className="rule-t rule-b grid grid-cols-3 gap-3 py-3">
-            {[["Drive left", me.hos.remaining_drive_h], ["On-duty left", me.hos.remaining_onduty_h], ["Window left", me.hos.remaining_elapsed_h]].map(([l, v]) => (
-              <div key={l as string}><div className="label">{l}</div><div className={`num text-[26px] font-semibold leading-tight ${(v as number) < 1.5 ? "t-bad" : "text-gray-900"}`}>{fmtH(v as number)}</div></div>
-            ))}
-          </div>
-        ) : <p className="text-sm text-gray-500">No duty history yet.</p>}
-        {me?.hos && <div className="mt-1 text-xs text-gray-500">Limiting: {me.hos.binding}{me.hos.provenance ? ` · ${me.hos.provenance}` : ""}{me.hos.cycle_note ? ` · ${me.hos.cycle_note}` : ""}</div>}
+          <>
+            <div className="rule-t rule-b grid grid-cols-3 gap-3 py-3">
+              {[["Drive left", me.hos.remaining_drive_h], ["On duty left", me.hos.remaining_onduty_h], ["Window left", me.hos.remaining_elapsed_h]].map(([l, v]) => (
+                <Big key={l as string} label={l as string} value={fmtH(v as number)} tone={(v as number) < 1.5 ? "bad" : undefined} />
+              ))}
+            </div>
+            {now && me.hos.segments && (
+              <div className="mt-3">
+                <div className="label mb-1">Today&apos;s log · {now.slice(0, 10)}</div>
+                <LogGrid day={now.slice(0, 10)} now={now} segments={me.hos.segments} />
+              </div>
+            )}
+            <div className="mt-1 text-[11px] ink-3">{me.hos.provenance}{me.hos.cycle_note ? ` · ${me.hos.cycle_note}` : ""}</div>
+          </>
+        ) : <p className="text-sm ink-3">No duty history yet.</p>}
         <div className="mt-3 grid grid-cols-4 gap-2">
-          {["off", "sleeper", "driving", "on_duty"].map((s) => <button key={s} disabled={busy} onClick={() => duty(s)} className={`btn justify-center ${me?.duty_status === s ? "bg-gray-900 text-white border-gray-900 hover:bg-gray-800" : ""}`}>{s.replace("_", " ")}</button>)}
+          {["off", "sleeper", "driving", "on_duty"].map((s) => <button key={s} disabled={busy} onClick={() => duty(s)} className={`btn ${me?.duty_status === s ? "btn-on" : ""}`}>{s.replace("_", " ")}</button>)}
         </div>
       </section>
 
       {offers.length > 0 && (
-        <section className="mb-4 rounded-lg bg-blue-50 p-3 ring-1 border-blue-200">
-          <div className="mb-2 text-xs uppercase text-blue-700">New load offer</div>
+        <section className="mb-7 bar-ok pl-3">
+          <div className="mb-2 flex items-baseline justify-between"><h2 className="h">New load offer</h2><span className="text-xs t-ok">from dispatch</span></div>
           {offers.map((o) => (
-            <div key={o.assignment_id} className="mb-2 rounded bg-white p-2 text-sm">
-              <div className="font-medium">{o.bill_number} · {cityCase(o.orig_city)} → {cityCase(o.dest_city)}</div>
-              <div className="text-[11px] text-gray-500">{o.customer} · {o.load_type} · {o.weight_lbs ? `${Math.round(o.weight_lbs)} lb` : ""} · pickup by {hhmm(o.pickup_by_end)}</div>
-              <div className="mt-2 grid grid-cols-2 gap-1.5">
+            <div key={o.assignment_id} className="mb-2 text-sm">
+              <div className="display text-[18px]">{cityCase(o.orig_city)} → {cityCase(o.dest_city)}</div>
+              <div className="mt-1 text-xs ink-3"><span className="mono">{o.bill_number}</span> · {o.customer} · {o.load_type} · {o.weight_lbs ? `${Math.round(o.weight_lbs).toLocaleString()} lb` : ""} · pickup <span className="num">{hhmm(o.pickup_by_start)}–{hhmm(o.pickup_by_end)}</span></div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
                 <Btn primary onClick={() => act(() => api(`/assignments/${o.assignment_id}/status`, { method: "POST", body: JSON.stringify({ status: "accepted", actor: driver }) }))}>Accept</Btn>
                 <Btn onClick={() => act(() => api(`/assignments/${o.assignment_id}/status`, { method: "POST", body: JSON.stringify({ status: "rejected", actor: driver }) }))}>Decline</Btn>
               </div>
@@ -89,12 +111,13 @@ export default function DriverApp({ params }: { params: Promise<{ name: string }
       )}
 
       <section>
-        <h2 className="mb-1 text-sm font-semibold">My loads</h2>
+        <h2 className="h mb-2">My loads</h2>
         <div className="rule-t">
-          {loads.length === 0 && <p className="py-2 text-sm text-gray-500">Nothing assigned.</p>}
-          {loads.map((o) => <div key={o.assignment_id} className="rule-b py-2 text-sm"><span className="font-medium text-gray-900">{cityCase(o.orig_city)} → {cityCase(o.dest_city)}</span> <span className="text-xs text-gray-500"><span className="num">{o.bill_number}</span> · pickup by <span className="num">{hhmm(o.pickup_by_end)}</span></span></div>)}
+          {loads.length === 0 && <p className="py-2 text-sm ink-3">Nothing assigned.</p>}
+          {loads.map((o) => <div key={o.assignment_id} className="rule-b flex items-baseline justify-between py-2.5 text-sm"><span className="font-medium">{cityCase(o.orig_city)} → {cityCase(o.dest_city)}</span> <span className="text-xs ink-3"><span className="mono">{o.bill_number}</span> · pickup by <span className="num">{hhmm(o.pickup_by_end)}</span></span></div>)}
         </div>
       </section>
+      <p className="label mt-8">Duty-status companion — a prototype, not a certified ELD.</p>
     </main>
   );
 }

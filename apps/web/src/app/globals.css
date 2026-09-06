@@ -1,49 +1,78 @@
 @import "tailwindcss";
 
-/* DockRisk design tokens — light, dense, typographic (Motive table structure, Stripe restraint).
-   Colour is spent on status only: one accent for actions, red / amber / green for state. */
+/* DockRisk tokens.
+   The desk is paper and asphalt: a warm off-white canvas, a warm near-black ink, and greys biased the same way.
+   Colour is spent only on state (red / amber / green) and on the map (one blue for what moves).
+   Type is one family in three widths: IBM Plex Sans for reading, Plex Sans Condensed for instrument numbers,
+   Plex Mono for identifiers. */
 :root {
-  --canvas: #f7f7f5;
+  --canvas: #f3f2ee;
   --surface: #ffffff;
-  --rule: #e6e7ea;
-  --rule-strong: #d1d5db;
-  --ink: #111827;
-  --ink-2: #4b5563;
-  --ink-3: #6b7280;
-  --ink-4: #9ca3af;
-  --accent: #1d4ed8;
-  --accent-hover: #1e40af;
-  --ok: #15803d;
-  --warn: #b45309;
-  --bad: #b91c1c;
-  --ok-bg: #f0fdf4;
-  --warn-bg: #fffbeb;
-  --bad-bg: #fef2f2;
-  --series-1: #2a78d6;   /* charts, light surface (validated reference palette) */
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --surface-2: #f8f7f4;
+  --rule: #e3e1da;
+  --rule-strong: #cbc9c0;
+  --ink: #1a1a17;
+  --ink-2: #4a4944;
+  --ink-3: #75746c;
+  --ink-4: #a5a49b;
+  --accent: #2a78d6;        /* map + charts only: the moving truck, the track, the series line */
+  --accent-soft: #dbe8f8;
+  --ok: #067647;
+  --warn: #b54708;
+  --bad: #b42318;
+  --ok-bg: #edf7f0;
+  --warn-bg: #fdf3e7;
+  --bad-bg: #fbecea;
+  --money: #e9a23b;         /* the billable band on the day bar: detention accruing */
+  --money-soft: #fbe9c8;
+  --duty-drive: #1a1a17;
+  --duty-on: #8f8e86;
+  --duty-off: #dedcd5;
+  --font-sans: var(--font-sans-src), "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-cond: var(--font-cond-src), "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: var(--font-mono-src), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
 html, body { background: var(--canvas); color: var(--ink); font-family: var(--font-sans); font-size: 14px; line-height: 1.45; }
-body { font-feature-settings: "tnum" 1, "cv11" 1; }
-.num, .tabular-nums { font-variant-numeric: tabular-nums; }
-a { color: var(--accent); }
-a:hover { color: var(--accent-hover); }
+body { font-feature-settings: "tnum" 1; }
+::selection { background: var(--accent-soft); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
-/* section label: small, gray, sentence case — never tracked uppercase */
+/* type roles */
+.num, .tabular-nums { font-variant-numeric: tabular-nums; }
+.display { font-family: var(--font-cond); font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.005em; line-height: 1; }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 0.93em; }
+.h { font-family: var(--font-cond); font-weight: 600; font-size: 15px; letter-spacing: 0; color: var(--ink); }
 .label { font-size: 11px; color: var(--ink-3); letter-spacing: 0; text-transform: none; }
+.ink-2 { color: var(--ink-2); } .ink-3 { color: var(--ink-3); } .ink-4 { color: var(--ink-4); }
+
+/* links are text: ink with a hairline, not a colour */
+a { color: inherit; text-decoration: underline; text-decoration-color: var(--rule-strong); text-underline-offset: 3px; text-decoration-thickness: 1px; }
+a:hover { text-decoration-color: var(--ink); }
+a.plain { text-decoration: none; }
+
 .rule-b { border-bottom: 1px solid var(--rule); }
 .rule-t { border-top: 1px solid var(--rule); }
 .surface { background: var(--surface); }
+.surface-2 { background: var(--surface-2); }
 
-/* buttons: quiet by default, one filled primary */
-.btn { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border: 1px solid var(--rule-strong); border-radius: 6px;
-       background: var(--surface); color: var(--ink); font-size: 13px; font-weight: 500; line-height: 1; cursor: pointer; }
-.btn:hover { background: #f3f4f6; }
+/* buttons: quiet by default (outline), one ink primary per view, square-ish corners */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 30px; padding: 0 11px; border: 1px solid var(--rule-strong); border-radius: 4px;
+       background: var(--surface); color: var(--ink); font-family: var(--font-sans); font-size: 13px; font-weight: 500; line-height: 1; cursor: pointer; white-space: nowrap; }
+.btn:hover { border-color: var(--ink-3); background: var(--surface-2); }
 .btn:disabled { opacity: .45; cursor: default; }
-.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-.btn-primary:hover { background: var(--accent-hover); }
-.btn-sm { height: 26px; padding: 0 8px; font-size: 12px; }
-.btn-lg { height: 44px; padding: 0 14px; font-size: 15px; border-radius: 8px; }
+.btn-primary { background: var(--ink); border-color: var(--ink); color: #fff; }
+.btn-primary:hover { background: #000; border-color: #000; }
+.btn-sm { height: 26px; padding: 0 9px; font-size: 12px; }
+.btn-lg { height: 46px; padding: 0 16px; font-size: 15px; border-radius: 6px; }
+.btn-on { background: var(--ink); border-color: var(--ink); color: #fff; }
+.btn-text { border-color: transparent; background: transparent; padding: 0 4px; }
+.btn-text:hover { background: transparent; border-color: transparent; text-decoration: underline; text-underline-offset: 3px; }
+
+/* inputs */
+.field { width: 100%; height: 30px; padding: 0 8px; border: 1px solid var(--rule-strong); border-radius: 4px; background: var(--surface); color: var(--ink); font-size: 13px; }
+.field:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: transparent; }
+textarea.field { height: auto; padding: 10px 12px; line-height: 1.55; }
 
 /* status: text + a 2px left bar, never a coloured card */
 .bar-bad { border-left: 2px solid var(--bad); }
@@ -51,8 +80,26 @@ a:hover { color: var(--accent-hover); }
 .bar-ok { border-left: 2px solid var(--ok); }
 .bar-none { border-left: 2px solid var(--rule); }
 .t-bad { color: var(--bad); } .t-warn { color: var(--warn); } .t-ok { color: var(--ok); } .t-ink3 { color: var(--ink-3); }
+.chip { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border: 1px solid var(--rule-strong); border-radius: 3px; font-size: 11px; color: var(--ink-2); background: var(--surface); }
+.chip-warn { border-color: #f0c69a; background: var(--warn-bg); color: var(--warn); }
+.chip-ok { border-color: #b9dcc6; background: var(--ok-bg); color: var(--ok); }
 
-/* leaflet on a light page */
-.leaflet-container { font-family: var(--font-sans); }
-.leaflet-tooltip { font-size: 12px; border-radius: 6px; border: 1px solid var(--rule-strong); box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+/* tables read as ledgers: hairlines, right-aligned figures, no zebra */
+table.ledger { width: 100%; border-collapse: collapse; }
+table.ledger th { font-weight: 400; font-size: 11px; color: var(--ink-3); padding-top: 4px; padding-bottom: 4px; border-bottom: 1px solid var(--rule); }
+table.ledger td { padding-top: 7px; padding-bottom: 7px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+table.ledger .r { text-align: right; }
+
+/* leaflet on a light page. Street tiles are OpenStreetMap, desaturated so the cartography recedes and the
+   trucks, outlines and 511 events are the only colour. */
+.map-muted .leaflet-tile-pane { filter: saturate(.14) brightness(1.03) contrast(.95); }
+.leaflet-container { font-family: var(--font-sans); background: #e8e6e0; }
+.leaflet-tooltip { font-size: 12px; border-radius: 3px; border: 1px solid var(--rule-strong); box-shadow: 0 2px 8px rgba(0,0,0,.08); font-family: var(--font-sans); }
+.leaflet-tooltip.tag { background: var(--ink); color: #fff; border: 0; padding: 2px 6px; font-size: 11px; font-weight: 500; font-family: var(--font-cond); letter-spacing: .01em; }
+.leaflet-tooltip.tag::before { display: none; }
 .leaflet-control-zoom a { color: var(--ink); }
+.leaflet-control-attribution { font-size: 10px; color: var(--ink-3); background: rgba(255,255,255,.7); }
+.leaflet-control-attribution a { text-decoration: none; color: var(--ink-3); }
+.truck-icon { background: transparent; border: 0; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }

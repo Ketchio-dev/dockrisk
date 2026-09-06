@@ -145,6 +145,17 @@ def exposure_summary(conn, free_min: int = FREE_MIN_DEFAULT, rate_low: float = 7
             "within_10min_of_threshold_n": len(band),
             "billable_hours": round(billable_h, 1),
         }
+    # distribution for the report chart: 15-min bins to 6 h, the rest in an overflow bucket
+    bin_min, max_min = 15, 360
+    counts = [0] * (max_min // bin_min)
+    overflow = 0
+    for r in rows:
+        d = r["dwell_min"]
+        if d >= max_min:
+            overflow += 1
+        else:
+            counts[int(max(0, d) // bin_min)] += 1
+    out["histogram"] = {"bin_min": bin_min, "max_min": max_min, "counts": counts, "overflow": overflow, "n": len(rows)}
     scale = 30 / span_days
     out["total_billable_hours"] = round(total_billable_h, 1)
     out["monthly_exposure_low"] = round(total_billable_h * rate_low * scale)

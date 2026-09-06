@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api, fmtMin, type Exposure } from "@/lib/api";
+import { PageHeader } from "@/components/Brand";
 
 type DQ = { rule: string; affected: number; total: number; pct: number; severity: "error" | "warn" | "info"; note: string };
 type Dataset = { orders: number; legs: number; drivers: number; trucks: number; trailers: number; in_region_orders: number; window: (string | null)[]; source: string };
@@ -27,6 +28,34 @@ const FINDINGS: Record<string, { title: string; means: string }> = {
   leg_no_trailer: { title: "Legs without a trailer", means: "" },
 };
 
+/** Dwell distribution: how long trucks waited, in 15-minute bins. The free-time line splits the chart; the
+ *  bars to its right are the exposure. Drawn to one scale, with labels only where there are values. */
+function DwellChart({ h, free }: { h: NonNullable<Exposure["histogram"]>; free: number }) {
+  const W = 720, H = 190, PL = 40, PR = 12, PT = 26, PB = 26;
+  const n = h.counts.length; const max = Math.max(1, ...h.counts);
+  const iw = (W - PL - PR) / n;
+  const x = (i: number) => PL + i * iw;
+  const y = (v: number) => PT + (1 - v / max) * (H - PT - PB);
+  const freeX = PL + (free / h.max_min) * (W - PL - PR);
+  const step = max > 400 ? 200 : max > 150 ? 100 : 50;
+  const ticks: number[] = []; for (let v = 0; v <= max; v += step) ticks.push(v);
+  const over = h.counts.reduce((acc, c, i) => acc + (i * h.bin_min >= free ? c : 0), 0) + h.overflow;
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Dwell time distribution">
+      {ticks.map((v) => <g key={v}><line x1={PL} x2={W - PR} y1={y(v)} y2={y(v)} stroke="var(--rule)" /><text x={PL - 6} y={y(v) + 3} fontSize="9" textAnchor="end" fill="var(--ink-4)" fontFamily="var(--font-mono)">{v}</text></g>)}
+      {h.counts.map((c, i) => {
+        const past = i * h.bin_min >= free;
+        return <rect key={i} x={x(i) + 0.75} y={y(c)} width={iw - 1.5} height={Math.max(0, y(0) - y(c))} fill={past ? "var(--money)" : "var(--duty-on)"} opacity={past ? 1 : 0.85} />;
+      })}
+      <line x1={freeX} x2={freeX} y1={PT - 10} y2={y(0)} stroke="var(--ink)" strokeWidth="1.5" />
+      <text x={freeX + 5} y={PT - 2} fontSize="10" fontWeight="600" fill="var(--ink)" fontFamily="var(--font-sans)">free time ends · {free} min</text>
+      <text x={freeX + 5} y={PT + 11} fontSize="10" fill="#8a5a12" fontFamily="var(--font-sans)">{over.toLocaleString()} stops past it{h.overflow ? ` (${h.overflow} over 6 h, off the chart)` : ""}</text>
+      {[0, 60, 120, 180, 240, 300, 360].map((m) => <text key={m} x={PL + (m / h.max_min) * (W - PL - PR)} y={H - 8} fontSize="9" textAnchor={m === 0 ? "start" : m === 360 ? "end" : "middle"} fill="var(--ink-4)" fontFamily="var(--font-mono)">{m === 0 ? "0" : `${m / 60}h`}</text>)}
+      <text x={PL} y={PT - 14} fontSize="9" fill="var(--ink-4)" fontFamily="var(--font-sans)">stops per 15 min</text>
+    </svg>
+  );
+}
+
 export default function DataPage() {
   const [dq, setDq] = useState<DQ[]>([]);
   const [ds, setDs] = useState<Dataset | null>(null);
@@ -38,8 +67,8 @@ export default function DataPage() {
   useEffect(() => { const t = setTimeout(() => api<Exposure>(`/exposure?free_min=${free}&rate_low=${lo}&rate_high=${Math.max(lo, hi)}&region_only=${region}&cap_min=${cap * 60}`).then(setEx), 150); return () => clearTimeout(t); }, [free, lo, hi, region, cap]);
 
   const Slider = ({ label, v, set, min, max, step = 1, unit = "" }: { label: string; v: number; set: (n: number) => void; min: number; max: number; step?: number; unit?: string }) => (
-    <label className="block text-xs text-gray-500">{label} <span className="num text-gray-900">{v}{unit}</span>
-      <input type="range" min={min} max={max} step={step} value={v} onChange={(e) => set(Number(e.target.value))} className="mt-1 block w-full accent-blue-700" /></label>
+    <label className="block text-xs ink-3">{label} <span className="display text-[13px]" style={{ color: "var(--ink)" }}>{v}{unit}</span>
+      <input type="range" min={min} max={max} step={step} value={v} onChange={(e) => set(Number(e.target.value))} className="mt-1 block w-full" style={{ accentColor: "var(--ink)" }} /></label>
   );
   const blocks = dq.filter((r) => r.severity === "error");
   const PRIORITY = ["order_no_rate_column", "leg_expected_date_sentinel", "order_missing_actual_pickup", "order_missing_actual_delivery"];
@@ -49,23 +78,23 @@ export default function DataPage() {
     const f = FINDINGS[r.rule] ?? { title: r.rule.replace(/_/g, " "), means: r.note };
     return (
       <div className={`rule-b py-2.5 pl-3 ${r.severity === "error" ? "bar-bad" : r.severity === "warn" ? "bar-warn" : "bar-none"}`} title={`${r.rule}: ${r.note}`}>
-        <div className="flex items-baseline justify-between gap-3"><span className="text-sm text-gray-900">{f.title}</span><span className="num shrink-0 text-xs text-gray-500">{r.affected.toLocaleString()} of {r.total.toLocaleString()} · {r.pct}%</span></div>
-        {f.means && <div className="mt-0.5 text-xs text-gray-500">{f.means}</div>}
+        <div className="flex items-baseline justify-between gap-3"><span className="text-sm">{f.title}</span><span className="num shrink-0 text-xs ink-3">{r.affected.toLocaleString()} of {r.total.toLocaleString()} · {r.pct}%</span></div>
+        {f.means && <div className="mt-0.5 text-xs ink-3">{f.means}</div>}
       </div>
     );
   };
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-6 text-gray-900">
-      <header className="mb-6 flex items-baseline justify-between"><h1 className="text-lg font-semibold">The data</h1><a href="/" className="text-sm">← Dispatch</a></header>
+    <main className="mx-auto max-w-3xl px-6 py-5">
+      <PageHeader title="The data" kicker={ds ? `${ds.source} · ${ds.window[0]?.slice(0, 10)} to ${ds.window[1]?.slice(0, 10)}` : "Carrier export"} current="/data" />
 
-      <section className="mb-8">
+      <section className="mb-9">
         <div className="label mb-1">Detention exposure, {ex?.window_days ?? "—"} days of the carrier&apos;s own records</div>
-        <div className="num text-[40px] font-semibold leading-none">{ex ? `$${Math.round(ex.monthly_exposure_low / 1000)}k–${Math.round(ex.monthly_exposure_high / 1000)}k` : "—"}<span className="text-lg font-normal text-gray-500"> per month</span></div>
-        <p className="mt-2 max-w-2xl text-sm text-gray-600">{ex ? `${ex.total_billable_hours} hours past the free time in ${ex.window_days} days, priced at $${lo}–${Math.max(lo, hi)} an hour.` : ""} Gross potential exposure under stated assumptions — the export has no billing records, so this is not unbilled revenue.</p>
+        <div className="display text-[52px]">{ex ? `$${Math.round(ex.monthly_exposure_low / 1000)}k–${Math.round(ex.monthly_exposure_high / 1000)}k` : "—"}<span className="ml-2 text-[18px] font-normal ink-3" style={{ fontFamily: "var(--font-sans)" }}>per month</span></div>
+        <p className="mt-3 max-w-2xl text-sm ink-2">{ex ? `${ex.total_billable_hours} hours past the free time in ${ex.window_days} days, priced at $${lo}–${Math.max(lo, hi)} an hour.` : ""} Gross potential exposure under stated assumptions — the export has no billing records, so this is not unbilled revenue.</p>
         <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-          {[`Free time ${free} min`, `$${lo}–${Math.max(lo, hi)}/h`, region ? "Southern Ontario only" : "All Ontario", `Dwells over ${cap} h discarded`].map((c) => <span key={c} className="rounded-full border border-gray-300 px-2.5 py-1 text-gray-700">{c}</span>)}
-          <button onClick={() => setAdjust((v) => !v)} className="text-xs">{adjust ? "Done" : "Adjust"}</button>
+          {[`Free time ${free} min`, `$${lo}–${Math.max(lo, hi)}/h`, region ? "Southern Ontario only" : "All Ontario", `Dwells over ${cap} h discarded`].map((c) => <span key={c} className="chip">{c}</span>)}
+          <button onClick={() => setAdjust((v) => !v)} className="btn btn-sm btn-text text-xs">{adjust ? "Done" : "Adjust"}</button>
         </div>
         {adjust && (
           <div className="rule-t rule-b mt-3 grid grid-cols-2 gap-x-8 gap-y-3 py-3 md:grid-cols-4">
@@ -73,41 +102,49 @@ export default function DataPage() {
             <Slider label="Rate, low" v={lo} set={setLo} min={25} max={150} step={5} unit=" $/h" />
             <Slider label="Rate, high" v={hi} set={setHi} min={25} max={200} step={5} unit=" $/h" />
             <Slider label="Discard dwells over" v={cap} set={setCap} min={6} max={96} step={6} unit=" h" />
-            <label className="col-span-2 flex items-center gap-2 text-xs text-gray-600 md:col-span-4"><input type="checkbox" checked={!!region} onChange={(e) => setRegion(e.target.checked ? 1 : 0)} /> Only stops where both ends are inside the brief&apos;s Southern Ontario box</label>
+            <label className="col-span-2 flex items-center gap-2 text-xs ink-2 md:col-span-4"><input type="checkbox" checked={!!region} onChange={(e) => setRegion(e.target.checked ? 1 : 0)} /> Only stops where both ends are inside the brief&apos;s Southern Ontario box</label>
           </div>
         )}
       </section>
 
+      {ex?.histogram && (
+        <section className="mb-9">
+          <div className="mb-2 flex items-baseline justify-between"><h2 className="h">How long trucks waited</h2><span className="label">{ex.histogram.n.toLocaleString()} stops · one wait per bill and stop</span></div>
+          <DwellChart h={ex.histogram} free={free} />
+          <p className="mt-1 text-xs ink-3">Most waits end inside the first hour. The money sits in the thin tail to the right of the free-time line, which is what manual logging misses.</p>
+        </section>
+      )}
+
       {ex?.by_kind && (
-        <section className="mb-8">
-          <div className="mb-1 flex items-baseline justify-between"><h2 className="text-sm font-semibold">Where the time goes</h2><span className="label">the money sits in a thin tail right at the two-hour line</span></div>
-          <table className="w-full text-sm">
-            <thead className="label"><tr className="rule-b"><th className="py-1 text-left font-normal">Dock</th><th className="py-1 text-right font-normal">Stops</th><th className="py-1 text-right font-normal">Typical wait</th><th className="py-1 text-right font-normal">One in ten waits</th><th className="py-1 text-right font-normal">Past free time</th></tr></thead>
+        <section className="mb-9">
+          <div className="mb-2 flex items-baseline justify-between"><h2 className="h">By dock</h2></div>
+          <table className="ledger text-sm">
+            <thead><tr><th className="text-left">Dock</th><th className="r">Stops</th><th className="r">Typical wait</th><th className="r">One in ten waits</th><th className="r">Past free time</th></tr></thead>
             <tbody>{Object.entries(ex.by_kind).map(([k, v]) => (
-              <tr key={k} className="rule-b"><td className="py-2 capitalize">{k === "pickup" ? "Shipper (pickup)" : "Consignee (delivery)"}</td><td className="num py-2 text-right">{v.n.toLocaleString()}</td><td className="num py-2 text-right">{fmtMin(v.median_min)}</td><td className="num py-2 text-right">{fmtMin(v.p90_min)}</td><td className="num py-2 text-right">{v.over_free_pct}%<span className="text-gray-500"> · {v.billable_hours} h</span></td></tr>
+              <tr key={k}><td>{k === "pickup" ? "Shipper (pickup)" : "Consignee (delivery)"}</td><td className="num r">{v.n.toLocaleString()}</td><td className="num r">{fmtMin(v.median_min)}</td><td className="num r">{fmtMin(v.p90_min)}</td><td className="num r">{v.over_free_pct}%<span className="ink-3"> · {v.billable_hours} h</span></td></tr>
             ))}</tbody>
           </table>
-          <p className="mt-2 text-xs text-gray-500">One wait per bill and stop: earliest dock arrival to the recorded pickup or delivery completion.</p>
+          <p className="mt-2 text-xs ink-3">Earliest dock arrival to the recorded pickup or delivery completion.</p>
         </section>
       )}
 
       {ds && (
-        <section className="mb-8">
-          <h2 className="mb-1 text-sm font-semibold">What the file is</h2>
-          <p className="text-sm text-gray-600">{ds.source}: <span className="num text-gray-900">{ds.orders.toLocaleString()}</span> orders, <span className="num text-gray-900">{ds.legs.toLocaleString()}</span> legs, <span className="num text-gray-900">{ds.drivers}</span> drivers, <span className="num text-gray-900">{ds.trailers}</span> trailers, {ds.window[0]?.slice(0, 10)} to {ds.window[1]?.slice(0, 10)}. <span className="num text-gray-900">{ds.in_region_orders.toLocaleString()}</span> orders have both ends inside the brief&apos;s region.</p>
+        <section className="mb-9">
+          <h2 className="h mb-2">What the file is</h2>
+          <p className="text-sm ink-2">{ds.source}: <span className="num" style={{ color: "var(--ink)" }}>{ds.orders.toLocaleString()}</span> orders, <span className="num" style={{ color: "var(--ink)" }}>{ds.legs.toLocaleString()}</span> legs, <span className="num" style={{ color: "var(--ink)" }}>{ds.drivers}</span> drivers, <span className="num" style={{ color: "var(--ink)" }}>{ds.trailers}</span> trailers, {ds.window[0]?.slice(0, 10)} to {ds.window[1]?.slice(0, 10)}. <span className="num" style={{ color: "var(--ink)" }}>{ds.in_region_orders.toLocaleString()}</span> orders have both ends inside the brief&apos;s region.</p>
         </section>
       )}
 
-      <section className="mb-6">
-        <div className="mb-1 flex items-baseline justify-between"><h2 className="text-sm font-semibold">Blocks a feature</h2><span className="label">what the export cannot support</span></div>
+      <section className="mb-7">
+        <div className="mb-2 flex items-baseline justify-between"><h2 className="h">Blocks a feature</h2><span className="label">what the export cannot support</span></div>
         <div className="rule-t">{blocks.map((r) => <Finding key={r.rule} r={r} />)}</div>
       </section>
-      <section className="mb-6">
-        <div className="mb-1 flex items-baseline justify-between"><h2 className="text-sm font-semibold">Worth knowing</h2><span className="label">handled, but changes how numbers should be read</span></div>
+      <section className="mb-7">
+        <div className="mb-2 flex items-baseline justify-between"><h2 className="h">Worth knowing</h2><span className="label">handled, but changes how numbers should be read</span></div>
         <div className="rule-t">{watch.map((r) => <Finding key={r.rule} r={r} />)}</div>
       </section>
       <section>
-        <button onClick={() => setShowNotes((v) => !v)} className="text-sm">{showNotes ? "Hide" : "Show"} {notes.length} import notes</button>
+        <button onClick={() => setShowNotes((v) => !v)} className="btn btn-sm btn-text text-sm">{showNotes ? "Hide" : "Show"} {notes.length} import notes</button>
         {showNotes && <div className="rule-t mt-2">{notes.map((r) => <Finding key={r.rule} r={r} />)}</div>}
       </section>
     </main>

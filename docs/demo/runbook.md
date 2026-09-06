@@ -23,8 +23,9 @@ tail — exactly what manual logging misses." Move the free-time slider to 90 mi
 ## 1:00–2:00 — one truck (`/`, click the hero card)
 
 Reset at 07:30 if needed. By ~09:25 sim, B3339 / Driver84 enters the London DC polygon for a 10:00
-appointment. Click the card: the map flies to the property and dock outlines. Point at the story strip:
-**✓ Arrival › Waiting › Next load at risk › Rescue accepted › Draft claim**. Three clocks:
+appointment. Click the row: the map flies to the property and dock outlines. Point at the **day bar**: the
+driver's shift on one time axis — driving in black, on-duty in grey, the hatched free-time band from the 10:00
+appointment, the red **legal stop** tick, and the **pickup window** bracket for the next load. Three clocks:
 physical dwell, *billable in* (clock from 10:00, not from arrival), HOS departure margin.
 "At arrival, the next load was feasible: **+1h 10m** margin."
 
@@ -47,7 +48,7 @@ Click **▶ find a relief driver (rescue)**. Candidates ranked with reasons: **D
 89 km deadhead, ETA 13:17 before the 13:30 window, 4.1 h HOS buffer**; others blocked with the reason
 ("cannot reach pickup by 13:30", "busy until…"). Click **Offer load**. Switch to the Driver8 tab: the offer
 appears → **Accept**. Back on dispatch: *Rescue coverage* shows **accepted ✓**, the next-load exception
-resolves ("load reassigned"), the story strip lights **Rescue accepted**, and on the map B9001 starts driving
+resolves ("load reassigned"), the day bar gains a **relief accepted** mark, and on the map B9001 starts driving
 toward London.
 
 ## 6:30–8:00 — the claim

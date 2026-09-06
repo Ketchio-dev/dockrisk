@@ -1,4 +1,4 @@
-# Design system — what we copied, and from whom
+# Design system — what we copied, and from whom, and what is ours
 
 Restyled 2026-09-06 after the first pass looked like every LLM-generated dashboard (dark slate, cyan
 accents, stacked cards, tracked-uppercase headers, glyph buttons, 10-px text). References were pulled
@@ -83,3 +83,54 @@ Before: dark slate, cyan/amber/green values, stacked bordered cards, uppercase-t
 `▶ ↺ ❚❚ ✓` in buttons. After: see `/` and `/driver/Driver84` with the scenario at ~11:00 — white header
 with text controls, exceptions as rows with a red bar and one blue button, a thin story timeline and three
 quiet numbers per visit, a charges table with fixed columns, and a driver page that reads like a load app.
+
+## Fourth pass — an identity, not a restyle (2026-09-06, night)
+
+The third pass left a competent light UI that still read as generated: Inter, Tailwind greys, one blue,
+default OpenStreetMap colours, and a vocabulary of numbers where a dispatcher thinks in a *day*. The
+diagnosis was not "wrong tokens" but "no signature". So this pass added one object the product owns and
+rebuilt the type around the subject.
+
+**The day bar** (`components/DayBar.tsx`). One truck's shift on a time axis: duty segments as the ground
+(driving black, on-duty grey, off pale), the visit's free time as a hatched band from the billing clock start,
+detention as an amber band, the legal stop as a red tick, the next pickup window as a bracket, `now` as an ink
+line. It is the three clocks as one picture — the operational deadline and the financial one converging on the
+same axis. Compact rows draw it 8 px tall with no labels; the open row adds mark labels above, an hour axis,
+and band labels below, on separate lines so nothing collides. Labels past 82 % of the axis hang left. The
+axis adapts: 15-minute ticks under three hours (evidence packet), hourly under nine, else two-hourly.
+The snapshot now carries `shift_start` and the last 24 h of duty `segments` per truck for it.
+
+**The log grid** (`LogGrid`). The driver app draws the four-line, 24-hour duty graph every driver has read
+since paper logbooks (off / sleeper / driving / on duty, a stepped line). This is the one detail only this
+subject has; it costs nothing and it is how a driver checks the app is telling the truth.
+
+**Type: IBM Plex, three widths.** Plex Sans for reading, Plex Sans Condensed SemiBold for instrument numbers
+(the three clocks at 30 px, the driver's hours at 32 px, the data headline at 52 px, the header clock at 22),
+Plex Mono for identifiers (bill numbers, units, ledger times, the rate-confirmation textarea). Plex was drawn
+for hardware and documentation; it reads as engineered rather than as a startup. Section headings are the
+condensed cut at 15 px, sentence case.
+
+**Colour.** Warm neutrals biased toward the ink (canvas `#F3F2EE`, ink `#1A1A17`, greys `#4A4944 / #75746C /
+#A5A49B`, rules `#E3E1DA`). The primary button is ink, not blue; links are ink with a hairline underline. Blue
+(`#2A78D6`) survives only on the map and in charts, for what moves. Status colours stay red / amber / green as
+text and 2-px bars. A new `--money #E9A23B` is the detention band and the past-free-time bars in the histogram.
+
+**Map.** OpenStreetMap tiles desaturated with a CSS filter on the tile pane (CARTO's grey basemap now
+watermarks without a key; OSM may not be proxied). Trucks are glyphs: an arrow rotated to the heading when
+moving, a square when stopped, a ringed dot at a facility. The selected truck gets an ink label tag.
+
+**Mark and header.** An 18-px mark — a building with one open bay door — before the wordmark in the condensed
+cut; the header is an instrument strip: scenario clock large, date and time zone small, text controls, a
+live dot, the exposure figure, and a four-word nav with the current page underlined in ink.
+
+**Data page** gained the dwell histogram: 15-minute bins to six hours, bars past the free-time line in amber,
+the line labelled with the count past it. The report's thesis ("the money is in a thin tail at the two-hour
+line") is now a picture before it is a sentence.
+
+**Evidence packet** opens with the visit on the same bar (free band from the clock start, ticks for every
+event, the appointment labelled), then the calculation in words.
+
+Removed: the five-dot story strip (the bar carries arrival, waiting, risk and rescue as marks and bands),
+Inter, `rounded-lg`, the blue primary, the violet "extracted-llm" chip.
+
+Tokens table above is superseded by `apps/web/src/app/globals.css`.
