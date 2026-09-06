@@ -39,7 +39,7 @@ export default function DriverApp({ params }: { params: Promise<{ name: string }
         ) : <p className="text-sm text-slate-500">No duty history yet.</p>}
         {me?.hos && <div className="mt-1 text-[10px] text-slate-500">binding: {me.hos.binding}{me.hos.provenance ? ` · ${me.hos.provenance}` : ""}{me.hos.cycle_note ? ` · ${me.hos.cycle_note}` : ""}</div>}
         <div className="mt-2 grid grid-cols-4 gap-1.5">
-          {["off", "sleeper", "driving", "on_duty"].map((s) => <button key={s} disabled={busy} onClick={() => duty(s)} className={`rounded px-1 py-1.5 text-xs ring-1 ${me?.duty_status === s ? "bg-slate-700 ring-slate-500" : "bg-slate-950 ring-slate-800"}`}>{s.replace("_", " ")}</button>)}
+          {["off", "sleeper", "driving", "on_duty"].map((s) => <button key={s} disabled={busy} onClick={() => duty(s)} className={`rounded px-1 py-2.5 text-sm ring-1 ${me?.duty_status === s ? "bg-slate-700 ring-slate-500" : "bg-slate-950 ring-slate-800"}`}>{s.replace("_", " ")}</button>)}
         </div>
       </section>
 

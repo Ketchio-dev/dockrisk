@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
-from core.analytics import exposure_summary, predict_remaining
+from core.analytics import build_dwell_history, build_dwell_model, exposure_summary, predict_remaining
 from core.db import DB_PATH, connect, init_schema
 from core.geofence import GeofenceIndex, GeofenceTracker
 from core.hos import DutyEvent, PlanStep, check_plan, compute_clocks, cycle_note, departure_margin, norm_cycle, seed_history_from_snapshot
@@ -99,6 +99,8 @@ async def lifespan(app: FastAPI):
     load_dotenv()
     S.conn = connect(DB_PATH)
     init_schema(S.conn)
+    if S.conn.execute("SELECT COUNT(*) FROM dwell_model").fetchone()[0] == 0 and S.conn.execute("SELECT COUNT(*) FROM orders").fetchone()[0] > 0:
+        build_dwell_history(S.conn); build_dwell_model(S.conn)   # fresh clone: derive the dwell model from whatever was imported
     seed_facilities()
     reload_geofences()
     S.visits = VisitEngine(S.conn)
