@@ -238,7 +238,7 @@ def policies_extract(x: ExtractIn):
     """Draft detention terms from pasted rate-confirmation text. Nothing is activated until /policies/confirm."""
     from core.policy_extract import extract_terms
     ex = extract_terms(x.text, x.prefer_llm)
-    return {"customer": x.customer, "source": ex.source, "model": ex.model, "warning": ex.warning, "terms": ex.terms.model_dump(), "source_text": x.text}
+    return {"customer": x.customer, "source": ex.source, "provider": ex.provider, "model": ex.model, "warning": ex.warning, "terms": ex.terms.model_dump(), "source_text": x.text}
 
 
 class ConfirmIn(BaseModel):

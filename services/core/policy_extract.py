@@ -4,8 +4,11 @@ AI where language is messy, rules where money is precise: the model only turns f
 structured draft with quoted evidence. A dispatcher confirms it before it becomes a policy, and the
 deterministic engine in core/visits.py does every calculation.
 
-Two paths, both labeled in `source`:
-  extracted-llm    Claude (claude-opus-5) via structured outputs, when credentials resolve
+Three paths, all labeled in `source` / `provider` / `model`:
+  extracted-llm    an LLM via structured outputs — provider chosen by DOCKRISK_EXTRACT_PROVIDER:
+                     openai     OpenAI-compatible chat.completions.parse (OPENAI_BASE_URL / OPENAI_API_KEY), e.g. gpt-6-astra
+                     anthropic  Claude messages.parse (ANTHROPIC_BASE_URL / ANTHROPIC_API_KEY), e.g. claude-opus-5
+                     auto       openai if OPENAI_API_KEY is set, else anthropic
   extracted-rules  regex parser — always available, used as fallback and as the offline test path
 """
 from __future__ import annotations
@@ -36,6 +39,7 @@ class DetentionTerms(BaseModel):
 class Extraction(BaseModel):
     terms: DetentionTerms
     source: Literal["extracted-llm", "extracted-rules"]
+    provider: str | None = None
     model: str | None = None
     warning: str | None = None
 
@@ -106,10 +110,9 @@ def _rules(text: str) -> DetentionTerms:
                           evidence_quotes=quotes, notes=("rules parser; not stated: " + ", ".join(missing)) if missing else "rules parser")
 
 
-def _llm(text: str) -> Extraction:
-    import anthropic  # resolves ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN / an `ant auth login` profile
+def _anthropic(text: str, model: str) -> Extraction:
+    import anthropic  # resolves ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN / an `ant auth login` profile, ANTHROPIC_BASE_URL
     client = anthropic.Anthropic()
-    model = os.environ.get("DOCKRISK_EXTRACT_MODEL", "claude-opus-5")
     response = client.messages.parse(
         model=model,
         max_tokens=4096,
@@ -117,7 +120,30 @@ def _llm(text: str) -> Extraction:
         messages=[{"role": "user", "content": f"Rate confirmation / agreement text:\n\n{text}"}],
         output_format=DetentionTerms,
     )
-    return Extraction(terms=response.parsed_output, source="extracted-llm", model=model)
+    return Extraction(terms=response.parsed_output, source="extracted-llm", provider="anthropic", model=model)
+
+
+def _openai(text: str, model: str) -> Extraction:
+    from openai import OpenAI  # resolves OPENAI_API_KEY / OPENAI_BASE_URL
+    client = OpenAI()
+    completion = client.chat.completions.parse(
+        model=model,
+        messages=[{"role": "system", "content": SYSTEM}, {"role": "user", "content": f"Rate confirmation / agreement text:\n\n{text}"}],
+        response_format=DetentionTerms,
+    )
+    msg = completion.choices[0].message
+    if msg.refusal:
+        raise RuntimeError(f"model refused: {msg.refusal}")
+    return Extraction(terms=msg.parsed, source="extracted-llm", provider="openai", model=model)
+
+
+def _llm(text: str) -> Extraction:
+    provider = os.environ.get("DOCKRISK_EXTRACT_PROVIDER", "auto").lower()
+    if provider == "auto":
+        provider = "openai" if os.environ.get("OPENAI_API_KEY") else "anthropic"
+    if provider == "openai":
+        return _openai(text, os.environ.get("DOCKRISK_EXTRACT_MODEL", "gpt-6-astra"))
+    return _anthropic(text, os.environ.get("DOCKRISK_EXTRACT_MODEL", "claude-opus-5"))
 
 
 def extract_terms(text: str, prefer_llm: bool = True) -> Extraction:

@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 
 type Terms = { free_time_min: number | null; rate_per_hour: number | null; increment_min: number | null; minimum_charge: number | null; maximum_charge: number | null; billing_start_rule: string | null; requires_on_time_arrival: boolean | null; required_evidence: string[]; applies_to: string[]; evidence_quotes: string[]; notes: string | null };
-type Extract = { customer: string | null; source: string; model: string | null; warning: string | null; terms: Terms; source_text: string };
+type Extract = { customer: string | null; source: string; provider: string | null; model: string | null; warning: string | null; terms: Terms; source_text: string };
 type Policy = { policy_id: number; scope: string; customer: string | null; free_time_min: number; rate_per_hour: number; increment_min: number; maximum_charge: number | null; billing_start_rule: string; requires_on_time_arrival: number; source: string; confirmed_by: string | null; created_ts: string | null };
 
 const SAMPLE = `RATE CONFIRMATION — Lane: Milton, ON to London, ON. Rate: $650 flat.
@@ -44,7 +44,7 @@ export default function Policies() {
           {ex && terms && (
             <>
               <div className="flex items-center gap-2 text-[11px]">
-                <span className={`rounded px-2 py-0.5 ${ex.source === "extracted-llm" ? "bg-violet-900/60 text-violet-200" : "bg-slate-800 text-slate-300"}`}>{ex.source}{ex.model ? ` · ${ex.model}` : ""}</span>
+                <span className={`rounded px-2 py-0.5 ${ex.source === "extracted-llm" ? "bg-violet-900/60 text-violet-200" : "bg-slate-800 text-slate-300"}`}>{ex.source}{ex.provider ? ` · ${ex.provider}` : ""}{ex.model ? ` · ${ex.model}` : ""}</span>
                 {ex.warning && <span className="text-amber-300">{ex.warning}</span>}
               </div>
               <div className="grid grid-cols-2 gap-2">
