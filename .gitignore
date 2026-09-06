@@ -1,0 +1,32 @@
+# organizer data: real customer names, marked non-public — never commit
+data/portal-downloads/
+*.xlsx
+*.pptx
+*.db
+*.db-journal
+*.duckdb
+
+# geocode cache is derived from the data; regenerate locally
+data/geo/
+
+# python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# node
+node_modules/
+.next/
+out/
+*.log
+
+# os / editor
+.DS_Store
+.idea/
+.vscode/
+
+# demo runtime logs
+.demo-logs/
+*.db-wal
+*.db-shm
