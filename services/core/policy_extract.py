@@ -127,6 +127,8 @@ def extract_terms(text: str, prefer_llm: bool = True) -> Extraction:
         except Exception as e:  # no credentials, network, refusal — fall back, but say so
             if "authentication" in str(e).lower():
                 warn = "No Anthropic credentials (set ANTHROPIC_API_KEY or run `ant auth login`); used the rules parser"
+            elif "rate_limit" in str(e).lower() or type(e).__name__ == "RateLimitError":
+                warn = "LLM provider rate-limited right now; used the rules parser — retry later for the Claude extraction"
             else:
                 warn = f"LLM extraction unavailable ({type(e).__name__}: {str(e)[:80]}); used the rules parser"
             return Extraction(terms=_rules(text), source="extracted-rules", warning=warn)

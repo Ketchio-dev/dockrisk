@@ -30,3 +30,7 @@ out/
 .demo-logs/
 *.db-wal
 *.db-shm
+
+# secrets
+.env
+.env.*

@@ -80,8 +80,23 @@ def reload_geofences():
     S.tracker = GeofenceTracker(S.index, confirm=3)
 
 
+def load_dotenv():
+    """Minimal .env loader (KEY=VALUE lines) so the LLM extractor finds ANTHROPIC_BASE_URL / ANTHROPIC_API_KEY.
+    Existing environment wins; the file is git-ignored."""
+    import os
+    from pathlib import Path
+    path = Path(__file__).resolve().parents[1] / ".env"
+    if path.exists():
+        for line in path.read_text().splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, v = line.split("=", 1)
+                os.environ.setdefault(k.strip(), v.strip())
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    load_dotenv()
     S.conn = connect(DB_PATH)
     init_schema(S.conn)
     seed_facilities()

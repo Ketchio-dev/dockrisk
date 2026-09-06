@@ -11,6 +11,7 @@ if [[ "${1:-}" == "stop" ]]; then
   echo "stopped"; exit 0
 fi
 SPEED="${1:-60}"
+[[ -f "$ROOT/services/.env" ]] && { set -a; source "$ROOT/services/.env"; set +a; }
 [[ -f "$ROOT/data/roadstar.db" ]] || { echo "no data/roadstar.db — run: cd services && uv run python -m core.importer && uv run python -m core.analytics"; exit 1; }
 pkill -f "uvicorn api.main:app" || true; pkill -f "sim.main" || true
 ( cd "$ROOT/services" && uv run uvicorn api.main:app --port 8000 > "$LOG/api.log" 2>&1 & )
