@@ -55,3 +55,5 @@ export const fmtMin = (m: number | null | undefined) => { if (m == null) return 
 export const fmtH = (h: number | null | undefined) => { if (h == null) return "—"; const t = Math.round(Math.abs(h) * 60); return `${h < 0 ? "−" : ""}${Math.floor(t / 60)}h ${String(t % 60).padStart(2, "0")}m`; };
 export const hhmm = (ts: string | null | undefined) => (ts ? ts.slice(11, 16) : "—");
 export const TZ = "ET"; // all sim and export timestamps are America/Toronto local time, stored without offset
+
+export const cityCase = (c: string | null | undefined) => (c ? c.toLowerCase().replace(/(^|[\s-])([a-z])/g, (m) => m.toUpperCase()).replace(/\bSt\b/, "St.") : "—");

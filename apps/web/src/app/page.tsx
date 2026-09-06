@@ -1,7 +1,7 @@
 "use client";
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
-import { API, api, type Exposure, type Facility, type Snapshot } from "@/lib/api";
+import { API, api, type Exposure, type Facility, type Snapshot, cityCase } from "@/lib/api";
 import { ChargesList, ExceptionInbox, RescuePanel, VisitCard, storyStage } from "@/components/Panels";
 import TracePanel from "@/components/TracePanel";
 
@@ -31,13 +31,13 @@ function SimControls({ sim }: { sim: Snapshot["sim"] | undefined }) {
   const send = async (path: string, body: Record<string, unknown>) => { setBusy(true); try { await api(path, { method: "POST", body: JSON.stringify(body) }); } finally { setBusy(false); } };
   const running = !!sim?.running;
   return (
-    <div className="flex items-center gap-1.5 rounded bg-slate-900 px-2 py-1 ring-1 ring-slate-700">
-      <span className="font-mono text-xs text-slate-300">sim {sim?.sim_ts?.slice(0, 16) ?? "—"} ET</span>
-      <button disabled={busy || !sim} onClick={() => send("/sim/control", { running: !running })} className="rounded bg-slate-800 px-2 py-0.5 text-xs hover:bg-slate-700 disabled:opacity-40">{running ? "❚❚ pause" : "▶ resume"}</button>
-      <select disabled={busy || !sim} value={sim?.speed ?? 60} onChange={(e) => send("/sim/control", { speed: Number(e.target.value) })} className="rounded bg-slate-800 px-1 py-0.5 text-xs">
+    <div className="flex items-center gap-2">
+      <span className="num text-sm text-gray-900">{sim?.sim_ts?.slice(11, 16) ?? "—"} <span className="text-gray-500">ET · {sim?.sim_ts?.slice(0, 10)}</span></span>
+      <button disabled={busy || !sim} onClick={() => send("/sim/control", { running: !running })} className="btn btn-sm">{running ? "Pause" : "Resume"}</button>
+      <select disabled={busy || !sim} value={sim?.speed ?? 60} onChange={(e) => send("/sim/control", { speed: Number(e.target.value) })} className="btn btn-sm">
         {[30, 60, 120, 300, 900].map((v) => <option key={v} value={v}>×{v}</option>)}
       </select>
-      <button disabled={busy} onClick={() => { if (confirm("Reset the scenario to 07:30? Live state (visits, charges, offers) is cleared.")) send("/sim/reset", {}); }} className="rounded bg-slate-800 px-2 py-0.5 text-xs text-amber-200 hover:bg-slate-700 disabled:opacity-40">↺ reset</button>
+      <button disabled={busy} onClick={() => { if (confirm("Reset the scenario to 07:30? Live state (visits, charges, offers) is cleared.")) send("/sim/reset", {}); }} className="btn btn-sm">Reset</button>
     </div>
   );
 }
@@ -52,29 +52,27 @@ export default function Dispatcher() {
   useEffect(() => { api<Facility[]>("/facilities").then(setFacilities); api<Exposure>("/exposure").then(setExposure); }, []);
 
   return (
-    <main className="flex h-screen flex-col bg-slate-950 text-slate-100">
-      <header className="flex items-center justify-between border-b border-slate-800 px-4 py-2">
+    <main className="flex h-screen flex-col text-gray-900" style={{ background: "var(--canvas)" }}>
+      <header className="surface rule-b flex items-center justify-between px-4 py-2">
         <div className="flex items-baseline gap-3">
-          <h1 className="whitespace-nowrap text-base font-semibold tracking-tight">DockRisk <span className="font-normal text-slate-400">· detention &amp; HOS exception desk</span></h1>
+          <h1 className="whitespace-nowrap text-[15px] font-semibold tracking-tight text-gray-900">DockRisk <span className="font-normal text-gray-500">Dispatch</span></h1>
         </div>
         <div className="flex items-center gap-4 text-xs">
           {exposure && (
-            <span className="text-slate-300" title={exposure.wording}>
-              <span className="text-slate-500">Modeled from the carrier&apos;s 62-day export:</span> <b className="text-amber-300">${exposure.monthly_exposure_low.toLocaleString()}–{exposure.monthly_exposure_high.toLocaleString()}/mo</b> <span className="text-slate-500">gross potential detention exposure · <a href="/data" className="underline decoration-dotted">assumptions</a></span>
+            <span className="text-gray-500" title={exposure.wording}>
+              Detention exposure, modeled from 62 days of the carrier&apos;s data: <span className="num font-semibold text-gray-900">${exposure.monthly_exposure_low.toLocaleString()}–{exposure.monthly_exposure_high.toLocaleString()}</span> per month · <a href="/data">assumptions</a>
             </span>
           )}
           <SimControls sim={snap?.sim} />
-          <span className={`rounded px-1.5 py-0.5 text-[10px] uppercase ${mode === "live" && !stale ? "bg-green-900/50 text-green-300" : mode === "offline" ? "bg-red-900/60 text-red-200" : "bg-amber-900/50 text-amber-200"}`}>{mode === "offline" ? "api offline" : stale ? "stale" : mode}</span>
-          <a href="/data" className="text-cyan-400 hover:underline">data</a>
-          <a href="/policies" className="text-cyan-400 hover:underline">policies</a>
-          <a href="/driver" className="text-cyan-400 hover:underline">driver app ↗</a>
+          <span className={`flex items-center gap-1.5 text-xs ${mode === "live" && !stale ? "text-gray-500" : mode === "offline" ? "t-bad" : "t-warn"}`}><span className={`inline-block h-2 w-2 rounded-full ${mode === "live" && !stale ? "bg-green-600" : mode === "offline" ? "bg-red-600" : "bg-amber-500"}`} />{mode === "offline" ? "API offline" : stale ? "Stale" : mode === "live" ? "Live" : "Polling"}</span>
+          <nav className="flex items-center gap-3 text-sm"><a href="/data">Data</a><a href="/policies">Policies</a><a href="/driver">Driver app</a></nav>
         </div>
       </header>
       <div className="grid min-h-0 flex-1 grid-cols-5">
         <div className="col-span-3 min-h-0">
           <FleetMap fleet={snap?.fleet ?? []} facilities={facilities} exceptions={snap?.exceptions ?? []} selected={selected} onSelect={setSelected} />
         </div>
-        <aside className="col-span-2 min-h-0 space-y-4 overflow-y-auto border-l border-slate-800 p-3">
+        <aside className="surface col-span-2 min-h-0 space-y-6 overflow-y-auto border-l border-gray-200 px-4 py-3">
           <ExceptionInbox exceptions={snap?.exceptions ?? []} onRescue={(bill, driver) => setRescue({ bill, driver })} onSelect={setSelected} />
           {(() => {
             const simDay = snap?.sim?.sim_ts?.slice(0, 10);
@@ -82,12 +80,12 @@ export default function Dispatcher() {
             if (rescues.length === 0) return null;
             return (
               <section>
-                <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">Rescue coverage</h2>
-                <div className="space-y-1">
+                <div className="mb-1 flex items-baseline justify-between"><h2 className="text-sm font-semibold text-gray-900">Relief coverage</h2><span className="label">loads moved by rescue</span></div>
+                <div className="rule-t">
                   {rescues.slice(0, 6).map((a) => (
-                    <button key={a.assignment_id} onClick={() => setSelected(a.unit)} className={`flex w-full items-center justify-between rounded border px-2 py-1.5 text-left text-xs ${a.status === "offered" ? "border-cyan-700/60 bg-cyan-950/30" : a.status === "rejected" ? "border-red-900/60 bg-red-950/30" : "border-green-900/60 bg-green-950/20"}`}>
-                      <span><b>{a.bill_number}</b> {a.orig_city} → {a.dest_city} <span className="text-slate-400">· pickup by {a.pickup_by_end && a.pickup_by_end.slice(0, 10) === simDay ? a.pickup_by_end.slice(11, 16) : "—"}</span></span>
-                      <span className={a.status === "offered" ? "text-cyan-300" : a.status === "rejected" ? "text-red-300" : "text-green-400"}>{a.driver_name} · {a.unit} · {a.status === "offered" ? "offered — awaiting driver" : a.status === "rejected" ? "declined ✗" : "accepted ✓"}</span>
+                    <button key={a.assignment_id} onClick={() => setSelected(a.unit)} className={`rule-b flex w-full items-center justify-between py-2 pl-3 text-left text-xs ${a.status === "offered" ? "bar-warn" : a.status === "rejected" ? "bar-bad" : "bar-ok"}`}>
+                      <span className="text-gray-900"><span className="font-medium">{a.bill_number}</span> {cityCase(a.orig_city)} → {cityCase(a.dest_city)} <span className="num text-gray-500">· pickup by {a.pickup_by_end && a.pickup_by_end.slice(0, 10) === simDay ? a.pickup_by_end.slice(11, 16) : "—"}</span></span>
+                      <span className={a.status === "offered" ? "t-warn" : a.status === "rejected" ? "t-bad" : "t-ok"}>{a.driver_name} · {a.unit} · {a.status === "offered" ? "offered, awaiting driver" : a.status === "rejected" ? "declined" : "accepted"}</span>
                     </button>
                   ))}
                 </div>
@@ -95,15 +93,15 @@ export default function Dispatcher() {
             );
           })()}
           <section>
-            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">Active facility visits · three clocks</h2>
-            <div className="space-y-2">
+            <div className="mb-1 flex items-baseline justify-between"><h2 className="text-sm font-semibold text-gray-900">At facilities</h2><span className="label">physical dwell · billing clock · hours-of-service margin</span></div>
+            <div className="rule-t">
               {(snap?.visits ?? []).map((v, i) => {
                 const stage = storyStage(v, snap?.exceptions ?? [], snap?.assignments ?? [], snap?.charges ?? []);
                 const rescue = (snap?.assignments ?? []).find((a) => a.bill_number === v.next_load?.bill_number && a.status === "accepted" && (a.reason_json ?? "").includes('"via": "rescue"'));
                 const times = [v.timestamps.property_entered_ts, v.timestamps.checked_in_ts ?? v.timestamps.at_dock_ts, null, rescue ? (rescue as { updated_ts?: string }).updated_ts ?? null : null, v.timestamps.gate_exited_ts ?? v.timestamps.released_ts];
                 return <VisitCard key={v.visit_id} v={v} selected={v.unit === selected} onSelect={setSelected} story={i === 0 || v.next_load ? { stage, times } : undefined} />;
               })}
-              {snap && snap.visits.length === 0 && <p className="text-sm text-slate-500">No truck is inside a facility right now.</p>}
+              {snap && snap.visits.length === 0 && <p className="py-3 text-sm text-gray-500">No truck is inside a facility right now.</p>}
             </div>
           </section>
           {selected && <TracePanel unit={selected} />}

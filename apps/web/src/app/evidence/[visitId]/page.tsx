@@ -15,20 +15,20 @@ export default function Evidence({ params }: { params: Promise<{ visitId: string
   const [p, setP] = useState<Packet | null>(null);
   const [err, setErr] = useState<string | null>(null);
   useEffect(() => { api<Packet>(`/visits/${visitId}/evidence`).then(setP).catch((e) => setErr(String(e))); }, [visitId]);
-  if (err) return <main className="p-6 text-slate-300">No evidence packet for visit #{visitId}: {err} <a href="/" className="text-cyan-400">← dispatcher</a></main>;
-  if (!p) return <main className="p-6 text-slate-300">Loading…</main>;
+  if (err) return <main className="p-6 text-gray-700">No evidence packet for visit #{visitId}: {err} <a href="/" className="text-blue-700">← dispatcher</a></main>;
+  if (!p) return <main className="p-6 text-gray-700">Loading…</main>;
   const c = p.calculation; const v = p.visit;
   return (
-    <main className="mx-auto max-w-3xl bg-white p-8 text-slate-900 print:p-0">
+    <main className="mx-auto max-w-3xl bg-white p-8 text-gray-900 print:p-0">
       <style>{`@media print { a, button { display: none } body { background: white } }`}</style>
       <header className="mb-4 flex items-baseline justify-between border-b border-slate-300 pb-2">
         <div><h1 className="text-xl font-semibold">Detention claim — draft</h1><div className="text-sm text-slate-600">Visit #{v.visit_id} · bill {v.bill_number ?? "—"} · {String(v.stop_kind)} at {String(p.facility.name)}</div></div>
-        <div className="text-right text-sm"><a href="/" className="text-cyan-700">← dispatcher</a><br /><button onClick={() => window.print()} className="mt-1 rounded bg-slate-800 px-2 py-1 text-xs text-white">Print / PDF</button></div>
+        <div className="text-right text-sm"><a href="/" className="text-cyan-700">← dispatcher</a><br /><button onClick={() => window.print()} className="mt-1 rounded bg-gray-100 px-2 py-1 text-xs text-white">Print / PDF</button></div>
       </header>
       {c && (
         <section className="mb-4 grid grid-cols-4 gap-2 text-center">
           {[["Physical dwell", `${c.physical_dwell_min} min`], ["Qualifying dwell", `${c.qualifying_dwell_min} min`], ["Billable", `${c.billable_min} min (raw ${c.billable_raw_min})`], ["Amount", `$${c.amount.toFixed(2)}`]].map(([l, x]) => (
-            <div key={l} className="rounded border border-slate-300 p-2"><div className="text-[10px] uppercase text-slate-500">{l}</div><div className="font-semibold">{x}</div></div>
+            <div key={l} className="rounded border border-slate-300 p-2"><div className="text-[10px] uppercase text-gray-500">{l}</div><div className="font-semibold">{x}</div></div>
           ))}
         </section>
       )}
@@ -50,19 +50,19 @@ export default function Evidence({ params }: { params: Promise<{ visitId: string
         </tbody></table>
       </section>
       <section className="mb-4 text-sm">
-        <h2 className="mb-1 font-semibold">Event ledger <span className="font-normal text-slate-500">· every transition with its source</span></h2>
-        <table className="w-full text-[11px]"><thead className="text-slate-500"><tr><th className="text-left font-normal">Event time</th><th className="text-left font-normal">Received</th><th className="text-left font-normal">Transition</th><th className="text-left font-normal">Source</th><th className="text-left font-normal">Note</th></tr></thead>
+        <h2 className="mb-1 font-semibold">Event ledger <span className="font-normal text-gray-500">· every transition with its source</span></h2>
+        <table className="w-full text-[11px]"><thead className="text-gray-500"><tr><th className="text-left font-normal">Event time</th><th className="text-left font-normal">Received</th><th className="text-left font-normal">Transition</th><th className="text-left font-normal">Source</th><th className="text-left font-normal">Note</th></tr></thead>
           <tbody>{p.events.map((e, i) => (
-            <tr key={i} className={`border-t border-slate-200 ${e.superseded_by ? "text-slate-400 line-through" : ""}`}><td className="py-0.5 tabular-nums">{e.ts}</td><td className="tabular-nums">{e.received_ts}</td><td>{e.state_from ?? "—"} → {e.state_to}</td><td>{e.source}{e.actor ? ` (${e.actor})` : ""}{e.confidence != null ? ` · ${e.confidence}` : ""}</td><td>{e.note}</td></tr>
+            <tr key={i} className={`border-t border-slate-200 ${e.superseded_by ? "text-gray-500 line-through" : ""}`}><td className="py-0.5 tabular-nums">{e.ts}</td><td className="tabular-nums">{e.received_ts}</td><td>{e.state_from ?? "—"} → {e.state_to}</td><td>{e.source}{e.actor ? ` (${e.actor})` : ""}{e.confidence != null ? ` · ${e.confidence}` : ""}</td><td>{e.note}</td></tr>
           ))}</tbody></table>
       </section>
       <section className="mb-4 grid grid-cols-2 gap-4 text-sm">
-        <div><h2 className="mb-1 font-semibold">GPS trace <span className="font-normal text-slate-500">· {p.breadcrumb_points} pings, sampled</span></h2>
-          <table className="w-full text-[11px]"><tbody>{p.breadcrumb_sample.map((b, i) => <tr key={i} className="border-t border-slate-200"><td className="py-0.5 tabular-nums">{b.sim_ts.slice(11, 16)}</td><td className="tabular-nums">{b.lat.toFixed(5)}, {b.lon.toFixed(5)}</td><td className="text-right">{Math.round(b.speed_kmh)} km/h</td><td className="text-right text-slate-500">{b.duty_status}</td></tr>)}</tbody></table></div>
+        <div><h2 className="mb-1 font-semibold">GPS trace <span className="font-normal text-gray-500">· {p.breadcrumb_points} pings, sampled</span></h2>
+          <table className="w-full text-[11px]"><tbody>{p.breadcrumb_sample.map((b, i) => <tr key={i} className="border-t border-slate-200"><td className="py-0.5 tabular-nums">{b.sim_ts.slice(11, 16)}</td><td className="tabular-nums">{b.lat.toFixed(5)}, {b.lon.toFixed(5)}</td><td className="text-right">{Math.round(b.speed_kmh)} km/h</td><td className="text-right text-gray-500">{b.duty_status}</td></tr>)}</tbody></table></div>
         <div><h2 className="mb-1 font-semibold">Duty status during the visit</h2>
-          <table className="w-full text-[11px]"><tbody>{p.duty_timeline.map((d, i) => <tr key={i} className="border-t border-slate-200"><td className="py-0.5 tabular-nums">{d.ts.slice(11, 16)}</td><td>{d.status}</td><td className="text-right text-slate-500">{d.source}</td></tr>)}</tbody></table></div>
+          <table className="w-full text-[11px]"><tbody>{p.duty_timeline.map((d, i) => <tr key={i} className="border-t border-slate-200"><td className="py-0.5 tabular-nums">{d.ts.slice(11, 16)}</td><td>{d.status}</td><td className="text-right text-gray-500">{d.source}</td></tr>)}</tbody></table></div>
       </section>
-      <footer className="border-t border-slate-300 pt-2 text-[11px] text-slate-500">Limits: {p.limits.join(" · ")}. Prepared by DockRisk (prototype). Dispatcher approval and customer terms govern; this packet supports, not replaces, the invoice.</footer>
+      <footer className="border-t border-slate-300 pt-2 text-[11px] text-gray-500">Limits: {p.limits.join(" · ")}. Prepared by DockRisk (prototype). Dispatcher approval and customer terms govern; this packet supports, not replaces, the invoice.</footer>
     </main>
   );
 }

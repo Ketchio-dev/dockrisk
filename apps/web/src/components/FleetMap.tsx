@@ -54,42 +54,42 @@ export default function FleetMap({ fleet, facilities, exceptions, selected, onSe
 
   return (
     <div className="relative h-full w-full">
-      <MapContainer center={REGION_VIEW.center} zoom={REGION_VIEW.zoom} className="h-full w-full" style={{ background: "#0b0f14" }}>
+      <MapContainer center={REGION_VIEW.center} zoom={REGION_VIEW.zoom} className="h-full w-full" style={{ background: "#e5e7eb" }}>
         <FlyTo target={target} /><ResetView token={resetToken} />
         <TileLayer key={satellite ? "sat" : "osm"} url={satellite ? ESRI : OSM}
           attribution={satellite ? "Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics" : "© OpenStreetMap contributors"} />
-        <Polygon positions={REGION} pathOptions={{ color: "#7c8ea3", weight: 1, dashArray: "6 6", fill: false }} />
+        <Polygon positions={REGION} pathOptions={{ color: "#9ca3af", weight: 1, dashArray: "6 6", fill: false }} />
         {facilities.map((f) => {
           const prop = ring(f.property_polygon_geojson); const dock = ring(f.dock_polygon_geojson);
           return prop ? (
             <span key={f.facility_id}>
-              <Polygon positions={prop} pathOptions={{ color: "#3b82f6", weight: 2, fillOpacity: 0.08 }}><Tooltip>{f.name} · property · {f.source} ({f.confidence})</Tooltip></Polygon>
-              {dock && <Polygon positions={dock} pathOptions={{ color: "#f59e0b", weight: 2, fillOpacity: 0.15 }}><Tooltip>{f.name} · dock</Tooltip></Polygon>}
+              <Polygon positions={prop} pathOptions={{ color: "#111827", weight: 1.5, fillOpacity: 0.04 }}><Tooltip>{f.name} · property · {f.source} ({f.confidence})</Tooltip></Polygon>
+              {dock && <Polygon positions={dock} pathOptions={{ color: "#b45309", weight: 1.5, fillOpacity: 0.12 }}><Tooltip>{f.name} · dock</Tooltip></Polygon>}
             </span>
           ) : (
-            <Circle key={f.facility_id} center={[f.lat, f.lon]} radius={400} pathOptions={{ color: "#64748b", weight: 1, dashArray: "4 4", fillOpacity: 0.05 }}>
+            <Circle key={f.facility_id} center={[f.lat, f.lon]} radius={400} pathOptions={{ color: "#9ca3af", weight: 1, dashArray: "4 4", fillOpacity: 0.04 }}>
               <Tooltip>{f.name} · centroid radius, not dock evidence</Tooltip>
             </Circle>
           );
         })}
         {closures.map((c) => (
           <Circle key={c.exception_id} center={[c.detail.lat as number, c.detail.lon as number]} radius={((c.detail.radius_km as number) ?? 5) * 1000}
-            pathOptions={{ color: "#ef4444", weight: 2, fillOpacity: 0.12 }}><Tooltip>{c.title}</Tooltip></Circle>
+            pathOptions={{ color: "#b91c1c", weight: 1.5, fillOpacity: 0.08 }}><Tooltip>{c.title}</Tooltip></Circle>
         ))}
         {incidents.filter((i) => showMinor || i.severity !== "minor").map((i) => (
           <CircleMarker key={`inc-${i.id}`} center={[i.lat, i.lon]} radius={i.severity === "severe" ? 7 : i.severity === "lane" ? 5 : 3}
-            pathOptions={{ color: "#0f172a", weight: 1, fillColor: i.severity === "severe" ? "#ef4444" : i.severity === "lane" ? "#f97316" : "#a16207", fillOpacity: 0.85 }}>
+            pathOptions={{ color: "#ffffff", weight: 1, fillColor: i.severity === "severe" ? "#b91c1c" : i.severity === "lane" ? "#d97706" : "#a16207", fillOpacity: 0.9 }}>
             <Tooltip direction="top" offset={[0, -6]}><b>{i.road} {i.direction ?? ""}</b> · {i.type === "accidentsAndIncidents" ? "incident" : "roadwork"}{i.full_closure ? " · FULL CLOSURE" : ""}<br />{i.description}<br /><span style={{ opacity: 0.7 }}>{i.lanes ?? ""} · {i.source}</span></Tooltip>
           </CircleMarker>
         ))}
-        {crumbs.length > 1 && <Polyline positions={crumbs} pathOptions={{ color: "#22d3ee", weight: 3, opacity: 0.8 }} />}
+        {crumbs.length > 1 && <Polyline positions={crumbs} pathOptions={{ color: "#2a78d6", weight: 3, opacity: 0.9 }} />}
         {fleet.map((f) => {
           const atDock = !!f.visit; const isSel = f.unit === selected;
           const moving = (f.speed_kmh ?? 0) > 3;
           const hosWarn = f.hos && f.hos.remaining_onduty_h < 1.5;
           return (
             <CircleMarker key={f.unit} center={[f.lat, f.lon]} radius={isSel ? 10 : 7}
-              pathOptions={{ color: isSel ? "#fff" : "#0f172a", weight: isSel ? 3 : 1, fillColor: hosWarn ? "#ef4444" : atDock ? "#f59e0b" : moving ? "#22c55e" : "#64748b", fillOpacity: 0.95 }}
+              pathOptions={{ color: isSel ? "#111827" : "#ffffff", weight: isSel ? 3 : 2, fillColor: hosWarn ? "#b91c1c" : atDock ? "#b45309" : moving ? "#1d4ed8" : "#6b7280", fillOpacity: 1 }}
               eventHandlers={{ click: () => onSelect(isSel ? null : f.unit) }}>
               <Tooltip direction="top" offset={[0, -8]}>
                 <b>{f.unit}</b> {f.driver_name} · {Math.round(f.speed_kmh)} km/h · {f.duty_status}
@@ -101,24 +101,24 @@ export default function FleetMap({ fleet, facilities, exceptions, selected, onSe
         })}
       </MapContainer>
       <div className="absolute right-3 top-3 z-[1000] flex gap-2">
-        <button onClick={() => setShowMinor((s) => !s)} className="rounded bg-slate-900/90 px-3 py-1.5 text-xs font-medium text-slate-100 shadow ring-1 ring-slate-600 hover:bg-slate-800" title="Ontario 511 live events on 400-series highways in the region">
+        <button onClick={() => setShowMinor((s) => !s)} className="btn btn-sm shadow-sm" title="Ontario 511 live events on 400-series highways in the region">
           511 live · {incidents.filter((i) => i.severity !== "minor").length} {showMinor ? `(+${incidents.filter((i) => i.severity === "minor").length} minor)` : ""}
         </button>
-        <button onClick={() => setSatellite((s) => !s)} className="rounded bg-slate-900/90 px-3 py-1.5 text-xs font-medium text-slate-100 shadow ring-1 ring-slate-600 hover:bg-slate-800">
+        <button onClick={() => setSatellite((s) => !s)} className="btn btn-sm shadow-sm">
           {satellite ? "Map view" : "Satellite view"}
         </button>
-        <button onClick={() => { onSelect(null); setResetToken((t) => t + 1); }} className="rounded bg-slate-900/90 px-3 py-1.5 text-xs font-medium text-slate-100 shadow ring-1 ring-slate-600 hover:bg-slate-800">Region</button>
+        <button onClick={() => { onSelect(null); setResetToken((t) => t + 1); }} className="btn btn-sm shadow-sm">Region</button>
       </div>
-      <div className="absolute bottom-3 left-3 z-[1000] rounded bg-slate-900/85 px-3 py-2 text-[11px] text-slate-200 ring-1 ring-slate-700">
-        <span className="mr-3"><i className="inline-block h-2.5 w-2.5 rounded-full bg-green-500" /> moving (&gt;3 km/h)</span>
-        <span className="mr-3"><i className="inline-block h-2.5 w-2.5 rounded-full bg-slate-500" /> stopped / standby</span>
-        <span className="mr-3"><i className="inline-block h-2.5 w-2.5 rounded-full bg-amber-500" /> inside a facility</span>
-        <span className="mr-3"><i className="inline-block h-2.5 w-2.5 rounded-full bg-red-500" /> on-duty left &lt; 1.5 h</span>
-        <span className="mr-3"><i className="inline-block h-2.5 w-4 border-2 border-blue-500" /> property</span>
-        <span className="mr-3"><i className="inline-block h-2.5 w-4 border-2 border-amber-500" /> dock</span>
-        <span className="mr-3"><i className="inline-block h-2.5 w-4 border border-dashed border-slate-400" /> centroid (sim geometry)</span>
-        <span><i className="inline-block h-2 w-2 rounded-full bg-orange-500" /> 511 live lane closure · <i className="inline-block h-2.5 w-2.5 rounded-full bg-red-500" /> incident / full closure</span>
-        {sel && <div className="mt-1 text-cyan-300">breadcrumbs: {sel.unit} · {crumbs.length} pings · odometer {sel.odometer_km ?? 0} km</div>}
+      <div className="absolute bottom-3 left-3 z-[1000] rounded-md bg-white/95 px-3 py-2 text-[11px] text-gray-700 shadow-sm border border-gray-200">
+        <span className="mr-3"><i className="inline-block h-2.5 w-2.5 rounded-full bg-blue-700" /> moving</span>
+        <span className="mr-3"><i className="inline-block h-2.5 w-2.5 rounded-full bg-gray-500" /> stopped</span>
+        <span className="mr-3"><i className="inline-block h-2.5 w-2.5 rounded-full bg-amber-700" /> at a facility</span>
+        <span className="mr-3"><i className="inline-block h-2.5 w-2.5 rounded-full bg-red-700" /> under 1.5 h on-duty left</span>
+        <span className="mr-3"><i className="inline-block h-2.5 w-4 border border-gray-900" /> property</span>
+        <span className="mr-3"><i className="inline-block h-2.5 w-4 border border-amber-700" /> dock</span>
+        <span className="mr-3"><i className="inline-block h-2.5 w-4 border border-dashed border-gray-400" /> centroid, simulation only</span>
+        <span><i className="inline-block h-2 w-2 rounded-full bg-amber-600" /> 511 lane closure · <i className="inline-block h-2.5 w-2.5 rounded-full bg-red-700" /> incident / full closure</span>
+        {sel && <div className="num mt-1 text-gray-900">{sel.unit}: {crumbs.length} pings · odometer {sel.odometer_km ?? 0} km</div>}
       </div>
     </div>
   );

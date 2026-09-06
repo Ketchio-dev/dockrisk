@@ -1,30 +1,58 @@
 @import "tailwindcss";
 
+/* DockRisk design tokens — light, dense, typographic (Motive table structure, Stripe restraint).
+   Colour is spent on status only: one accent for actions, red / amber / green for state. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --canvas: #f7f7f5;
+  --surface: #ffffff;
+  --rule: #e6e7ea;
+  --rule-strong: #d1d5db;
+  --ink: #111827;
+  --ink-2: #4b5563;
+  --ink-3: #6b7280;
+  --ink-4: #9ca3af;
+  --accent: #1d4ed8;
+  --accent-hover: #1e40af;
+  --ok: #15803d;
+  --warn: #b45309;
+  --bad: #b91c1c;
+  --ok-bg: #f0fdf4;
+  --warn-bg: #fffbeb;
+  --bad-bg: #fef2f2;
+  --series-1: #2a78d6;   /* charts, light surface (validated reference palette) */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+html, body { background: var(--canvas); color: var(--ink); font-family: var(--font-sans); font-size: 14px; line-height: 1.45; }
+body { font-feature-settings: "tnum" 1, "cv11" 1; }
+.num, .tabular-nums { font-variant-numeric: tabular-nums; }
+a { color: var(--accent); }
+a:hover { color: var(--accent-hover); }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* section label: small, gray, sentence case — never tracked uppercase */
+.label { font-size: 11px; color: var(--ink-3); letter-spacing: 0; text-transform: none; }
+.rule-b { border-bottom: 1px solid var(--rule); }
+.rule-t { border-top: 1px solid var(--rule); }
+.surface { background: var(--surface); }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-}
+/* buttons: quiet by default, one filled primary */
+.btn { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border: 1px solid var(--rule-strong); border-radius: 6px;
+       background: var(--surface); color: var(--ink); font-size: 13px; font-weight: 500; line-height: 1; cursor: pointer; }
+.btn:hover { background: #f3f4f6; }
+.btn:disabled { opacity: .45; cursor: default; }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent-hover); }
+.btn-sm { height: 26px; padding: 0 8px; font-size: 12px; }
+.btn-lg { height: 44px; padding: 0 14px; font-size: 15px; border-radius: 8px; }
 
-/* dockrisk-text: lift the smallest UI text one notch for projector legibility */
-.text-\[10px\] { font-size: 11px; }
-.text-\[11px\] { font-size: 12px; }
+/* status: text + a 2px left bar, never a coloured card */
+.bar-bad { border-left: 2px solid var(--bad); }
+.bar-warn { border-left: 2px solid var(--warn); }
+.bar-ok { border-left: 2px solid var(--ok); }
+.bar-none { border-left: 2px solid var(--rule); }
+.t-bad { color: var(--bad); } .t-warn { color: var(--warn); } .t-ok { color: var(--ok); } .t-ink3 { color: var(--ink-3); }
+
+/* leaflet on a light page */
+.leaflet-container { font-family: var(--font-sans); }
+.leaflet-tooltip { font-size: 12px; border-radius: 6px; border: 1px solid var(--rule-strong); box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+.leaflet-control-zoom a { color: var(--ink); }
