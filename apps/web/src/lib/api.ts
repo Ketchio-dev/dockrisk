@@ -36,7 +36,7 @@ export type Charge = {
   billable_min: number; rate_per_hour: number; amount: number; confidence: number; review_required: number; reason_codes: string[]; status: string; facility_name: string; created_ts: string;
 };
 export type Assignment = {
-  assignment_id: number; bill_number: string; driver_name: string; unit: string | null; status: string; orig_city: string | null; dest_city: string | null;
+  assignment_id: number; bill_number: string; driver_name: string; unit: string | null; status: string; reason_json?: string | null; orig_city: string | null; dest_city: string | null;
   customer: string | null; load_type: string | null; weight_lbs: number | null; pickup_by_start: string | null; pickup_by_end: string | null;
 };
 export type Snapshot = { sim: { sim_ts: string; speed: number; running: number; scenario?: string }; fleet: FleetRow[]; visits: Visit[]; exceptions: Exception[]; charges: Charge[]; assignments: Assignment[] };

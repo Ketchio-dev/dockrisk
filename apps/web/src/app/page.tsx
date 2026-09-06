@@ -55,7 +55,7 @@ export default function Dispatcher() {
     <main className="flex h-screen flex-col bg-slate-950 text-slate-100">
       <header className="flex items-center justify-between border-b border-slate-800 px-4 py-2">
         <div className="flex items-baseline gap-3">
-          <h1 className="text-base font-semibold tracking-tight">DockRisk <span className="font-normal text-slate-400">· detention &amp; HOS exception desk · Southern Ontario</span></h1>
+          <h1 className="whitespace-nowrap text-base font-semibold tracking-tight">DockRisk <span className="font-normal text-slate-400">· detention &amp; HOS exception desk</span></h1>
         </div>
         <div className="flex items-center gap-4 text-xs">
           {exposure && (
@@ -77,19 +77,24 @@ export default function Dispatcher() {
         </div>
         <aside className="col-span-2 min-h-0 space-y-4 overflow-y-auto border-l border-slate-800 p-3">
           <ExceptionInbox exceptions={snap?.exceptions ?? []} onRescue={(bill, driver) => setRescue({ bill, driver })} onSelect={setSelected} />
-          {(snap?.assignments ?? []).some((a) => a.status === "offered" || (a.status === "accepted" && a.unit && snap?.fleet.find((f) => f.unit === a.unit)?.visit == null)) && (
-            <section>
-              <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">Load coverage</h2>
-              <div className="space-y-1">
-                {(snap?.assignments ?? []).filter((a) => a.status === "offered" || a.status === "accepted").slice(0, 8).map((a) => (
-                  <button key={a.assignment_id} onClick={() => setSelected(a.unit)} className={`flex w-full items-center justify-between rounded border px-2 py-1.5 text-left text-xs ${a.status === "offered" ? "border-cyan-700/60 bg-cyan-950/30" : "border-slate-800 bg-slate-900/60"}`}>
-                    <span><b>{a.bill_number}</b> {a.orig_city} → {a.dest_city} <span className="text-slate-400">· pickup by {a.pickup_by_end?.slice(11, 16) ?? "—"}</span></span>
-                    <span className={a.status === "offered" ? "text-cyan-300" : "text-green-400"}>{a.driver_name} · {a.unit} · {a.status === "offered" ? "offered, awaiting driver" : "accepted ✓"}</span>
-                  </button>
-                ))}
-              </div>
-            </section>
-          )}
+          {(() => {
+            const simDay = snap?.sim?.sim_ts?.slice(0, 10);
+            const rescues = (snap?.assignments ?? []).filter((a) => (a.status === "offered" || a.status === "accepted" || a.status === "rejected") && (a.reason_json ?? "").includes('"via": "rescue"'));
+            if (rescues.length === 0) return null;
+            return (
+              <section>
+                <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">Rescue coverage</h2>
+                <div className="space-y-1">
+                  {rescues.slice(0, 6).map((a) => (
+                    <button key={a.assignment_id} onClick={() => setSelected(a.unit)} className={`flex w-full items-center justify-between rounded border px-2 py-1.5 text-left text-xs ${a.status === "offered" ? "border-cyan-700/60 bg-cyan-950/30" : a.status === "rejected" ? "border-red-900/60 bg-red-950/30" : "border-green-900/60 bg-green-950/20"}`}>
+                      <span><b>{a.bill_number}</b> {a.orig_city} → {a.dest_city} <span className="text-slate-400">· pickup by {a.pickup_by_end && a.pickup_by_end.slice(0, 10) === simDay ? a.pickup_by_end.slice(11, 16) : "—"}</span></span>
+                      <span className={a.status === "offered" ? "text-cyan-300" : a.status === "rejected" ? "text-red-300" : "text-green-400"}>{a.driver_name} · {a.unit} · {a.status === "offered" ? "offered — awaiting driver" : a.status === "rejected" ? "declined ✗" : "accepted ✓"}</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            );
+          })()}
           <section>
             <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">Active facility visits · three clocks</h2>
             <div className="space-y-2">
