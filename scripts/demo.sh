@@ -12,7 +12,15 @@ if [[ "${1:-}" == "stop" ]]; then
 fi
 SPEED="${1:-60}"
 [[ -f "$ROOT/services/.env" ]] && { set -a; source "$ROOT/services/.env"; set +a; }
-[[ -f "$ROOT/data/roadstar.db" ]] || { echo "no data/roadstar.db — run: cd services && uv run python -m core.importer && uv run python -m core.analytics"; exit 1; }
+if [[ ! -f "$ROOT/data/roadstar.db" ]]; then
+  if [[ -f "$ROOT/data/portal-downloads/Hackathon_Data.xlsx" ]]; then
+    echo "building data/roadstar.db from the organizer workbook…"
+    ( cd "$ROOT/services" && uv run python -m core.importer && uv run python -m core.analytics ) | tail -3
+  else
+    echo "organizer workbook not found — building from the synthetic sample (fictional customers, same schema)…"
+    ( cd "$ROOT/services" && uv run python -m core.synthetic >/dev/null && uv run python -m core.importer --xlsx data/sample/Hackathon_Data_SAMPLE.xlsx && uv run python -m core.analytics ) | tail -3
+  fi
+fi
 pkill -f "uvicorn api.main:app" || true; pkill -f "sim.main" || true
 ( cd "$ROOT/services" && uv run uvicorn api.main:app --port 8000 > "$LOG/api.log" 2>&1 & )
 for i in $(seq 1 20); do curl -sf localhost:8000/health >/dev/null && break; sleep 0.5; done

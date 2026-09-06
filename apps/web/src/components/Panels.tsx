@@ -1,6 +1,34 @@
 "use client";
 import { useEffect, useState } from "react";
-import { api, fmtH, fmtMin, hhmm, type Candidate, type Charge, type Exception, type Visit } from "@/lib/api";
+import { api, fmtH, fmtMin, hhmm, TZ, type Assignment, type Candidate, type Charge, type Exception, type Visit } from "@/lib/api";
+
+/** Where the hero story is: derived from the visit, the exceptions and the assignments — nothing is hard-coded. */
+export function storyStage(v: Visit, exceptions: Exception[], assignments: Assignment[], charges: Charge[]): number {
+  const rescued = assignments.some((a) => a.bill_number === v.next_load?.bill_number && a.driver_name !== v.driver_name && a.status === "accepted" && (a.reason_json ?? "").includes('"via": "rescue"'));
+  const charged = charges.some((c) => c.visit_id === v.visit_id);
+  if (charged || ["CHARGE_READY", "REVIEW_REQUIRED", "GATE_EXITED"].includes(v.state)) return 4;
+  if (rescued) return 3;
+  const atRisk = exceptions.some((e) => e.visit_id === v.visit_id && (e.kind === "next_load_at_risk" || e.kind === "hos_margin")) || (v.hos?.next_load && v.hos.next_load.verdict !== "feasible");
+  if (atRisk) return 2;
+  if (v.physical_dwell_min > 5) return 1;
+  return 0;
+}
+const STAGES = ["Arrival", "Waiting", "Next load at risk", "Rescue accepted", "Draft claim"];
+
+export function StoryStrip({ stage, times }: { stage: number; times: (string | null)[] }) {
+  return (
+    <ol className="mb-2 flex items-center gap-1 text-[10px]">
+      {STAGES.map((label, i) => (
+        <li key={label} className="flex items-center gap-1">
+          <span className={`rounded-full px-2 py-0.5 ${i < stage ? "bg-green-900/60 text-green-200" : i === stage ? "bg-cyan-700 text-white ring-2 ring-cyan-400/60" : "bg-slate-800 text-slate-500"}`}>
+            {i < stage ? "✓ " : ""}{label}{times[i] ? <span className="ml-1 opacity-70">{hhmm(times[i])}</span> : null}
+          </span>
+          {i < STAGES.length - 1 && <span className={i < stage ? "text-green-700" : "text-slate-700"}>›</span>}
+        </li>
+      ))}
+    </ol>
+  );
+}
 
 const sevCls: Record<string, string> = { critical: "border-red-500/70 bg-red-950/40", warn: "border-amber-500/60 bg-amber-950/30", info: "border-slate-600 bg-slate-900/60" };
 
@@ -48,7 +76,7 @@ function Clock({ label, value, sub, tone }: { label: string; value: string; sub?
   );
 }
 
-export function VisitCard({ v, selected, onSelect }: { v: Visit; selected: boolean; onSelect: (unit: string | null) => void }) {
+export function VisitCard({ v, selected, onSelect, story }: { v: Visit; selected: boolean; onSelect: (unit: string | null) => void; story?: { stage: number; times: (string | null)[] } }) {
   const mtb = v.minutes_until_billable;
   const billingTone = mtb == null ? "bad" : mtb <= 30 ? "warn" : "ok";
   const m = v.hos?.margin_h;
@@ -60,10 +88,11 @@ export function VisitCard({ v, selected, onSelect }: { v: Visit; selected: boole
         <span className="font-medium">{v.driver_name ?? v.unit} <span className="text-slate-400">· {v.unit}</span></span>
         <span className="text-[11px] text-slate-400">{v.facility?.name} · {v.stop_kind} · <span className="text-slate-300">{v.state.replace(/_/g, " ")}</span></span>
       </button>
+      {story && <div className="mt-2"><StoryStrip stage={story.stage} times={story.times} /></div>}
       <div className="mt-2 grid grid-cols-3 gap-1.5">
-        <Clock label="Physical dwell" value={fmtMin(v.physical_dwell_min)} sub={`since ${hhmm(v.timestamps.property_entered_ts)}`} tone="muted" />
+        <Clock label="Physical dwell" value={fmtMin(v.physical_dwell_min)} sub={`since ${hhmm(v.timestamps.property_entered_ts)} ${TZ}`} tone="muted" />
         <Clock label={mtb == null ? "Billable detention" : "Billable in"} value={mtb == null ? `${fmtMin(v.qualifying_dwell_min - v.policy.free_time_min)} · $${v.amount_so_far.toFixed(0)}` : fmtMin(mtb)}
-          sub={`clock from ${hhmm(v.clock_start_ts)} · free ${v.policy.free_time_min}m · $${v.policy.rate_per_hour}/h`} tone={billingTone} />
+          sub={`clock from ${hhmm(v.clock_start_ts)} ${TZ} · free ${v.policy.free_time_min}m · $${v.policy.rate_per_hour}/h`} tone={billingTone} />
         <Clock label="HOS departure margin" value={m == null ? "no duty log" : fmtH(m)}
           sub={v.hos ? `wait ~${Math.round(v.hos.wait_more_min)}m + ${v.hos.drive_to_safe_h}h to legal stop · ${v.hos.binding}` : undefined} tone={hosTone} />
       </div>
@@ -94,7 +123,7 @@ export function ChargesList({ charges }: { charges: Charge[] }) {
   const approve = async (id: number, status: string) => { setBusy(id); try { await api(`/charges/${id}/approve`, { method: "POST", body: JSON.stringify({ actor: "dispatcher", status }) }); } finally { setBusy(null); } };
   return (
     <section>
-      <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">Detention charges · drafts</h2>
+      <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">Detention charges · this run · drafts <span className="font-normal normal-case text-slate-500">— actual visits in the simulation, not the modeled monthly exposure</span></h2>
       <table className="w-full text-[11px]">
         <thead className="text-slate-500"><tr><th className="text-left font-normal">Facility</th><th className="text-right font-normal">Qualifying</th><th className="text-right font-normal">Billable</th><th className="text-right font-normal">Amount</th><th className="text-right font-normal">Status</th></tr></thead>
         <tbody>

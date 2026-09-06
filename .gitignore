@@ -1,6 +1,8 @@
 # organizer data: real customer names, marked non-public — never commit
 data/portal-downloads/
 *.xlsx
+# synthetic sample: fictional customers, generated values — safe to publish
+!data/sample/*.xlsx
 *.pptx
 *.db
 *.db-journal
@@ -34,3 +36,6 @@ out/
 # secrets
 .env
 .env.*
+
+# map tile cache for demo-day resilience
+.tile-cache/

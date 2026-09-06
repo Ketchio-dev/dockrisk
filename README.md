@@ -48,6 +48,15 @@ cd ../../services && uv run python -m sim.main --reset --speed 60
 
 One command for all three: `scripts/demo.sh [speed]` (`scripts/demo.sh stop` to end).
 
+### Run without the organizer data
+
+The real workbook is not in the repo. `scripts/demo.sh` builds the database from
+`data/sample/Hackathon_Data_SAMPLE.xlsx` when the organizer file is absent — a synthetic set in the
+exact same five-sheet shape (fictional customers, generated values, the same quirks: split bills,
+sentinel dates, frozen per-driver HOS copies, a thin dwell tail past two hours). Regenerate it with
+`cd services && uv run python -m core.synthetic`. The numbers on screen will differ from the ones
+quoted below, which come from the carrier's export.
+
 Tests: `cd services && uv run pytest`.
 
 ## The numbers, and how to say them

@@ -15,6 +15,7 @@ from pathlib import Path
 
 import openpyxl
 
+from core.city_coords import CITY_COORDS
 from core.db import DB_PATH, ROOT, connect, init_schema
 from core.geocode import norm_city
 
@@ -144,8 +145,13 @@ def main(xlsx: Path = XLSX, db_path: Path = DB_PATH) -> None:
     def city_ll(city, prov):
         if not city or prov != "ON":
             return None, None
-        hit = cities.get(f"{str(city).strip().upper()}, ON")
-        return (hit["lat"], hit["lon"]) if hit else (None, None)
+        key = str(city).strip().upper()
+        hit = cities.get(f"{key}, ON")
+        if hit:
+            return hit["lat"], hit["lon"]
+        if key in CITY_COORDS:   # built-in fallback so a clone without data/geo/ still places facilities
+            return CITY_COORDS[key]
+        return None, None
 
     def pc_ll(pc):
         pc = (text(pc) or "").replace(" ", "").upper()
@@ -304,7 +310,10 @@ def main(xlsx: Path = XLSX, db_path: Path = DB_PATH) -> None:
                         (tn, text(g("TRAILER_TYPE")), num(g("CAPACITY_LBS")), num(g("LENGTH_FT")),
                          num(g("INSIDE_HEIGHT_FT")), num(g("WIDTH_IN"))))
 
-    # ---- Places from the geocode cache ----
+    # ---- Places from the geocode cache, plus built-in fallbacks for cities the cache lacks ----
+    for k, (lat, lon) in CITY_COORDS.items():
+        if f"{k}, ON" not in cities:
+            cur.execute("INSERT OR IGNORE INTO places VALUES (?,?,?,?,?)", (f"{k}, ON", "city", lat, lon, "built-in fallback"))
     for k, v in cities.items():
         if v:
             cur.execute("INSERT OR REPLACE INTO places VALUES (?,?,?,?,?)", (k, "city", v["lat"], v["lon"], v.get("display")))
@@ -329,4 +338,12 @@ def main(xlsx: Path = XLSX, db_path: Path = DB_PATH) -> None:
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--xlsx", default=str(XLSX), help="workbook to import (default: the organizer file; use data/sample/Hackathon_Data_SAMPLE.xlsx for the synthetic set)")
+    ap.add_argument("--db", default=str(DB_PATH))
+    a = ap.parse_args()
+    x = Path(a.xlsx)
+    if not x.exists() and (ROOT / a.xlsx).exists():   # allow paths relative to the repo root
+        x = ROOT / a.xlsx
+    main(x, Path(a.db))

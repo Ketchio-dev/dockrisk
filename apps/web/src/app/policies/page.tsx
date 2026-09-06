@@ -18,16 +18,37 @@ export default function Policies() {
   const [terms, setTerms] = useState<Terms | null>(null);
   const [busy, setBusy] = useState(false);
   const [policies, setPolicies] = useState<Policy[]>([]);
+  const [activated, setActivated] = useState<Policy | null>(null);
   const load = () => api<Policy[]>("/policies").then(setPolicies);
   useEffect(() => { load(); }, []);
   const extract = async () => { setBusy(true); try { const r = await api<Extract>("/policies/extract", { method: "POST", body: JSON.stringify({ text, customer, prefer_llm: true }) }); setEx(r); setTerms(r.terms); } finally { setBusy(false); } };
-  const confirm = async () => { if (!ex || !terms) return; setBusy(true); try { await api("/policies/confirm", { method: "POST", body: JSON.stringify({ customer, terms, source: ex.source, source_text: ex.source_text, confirmed_by: "dispatcher" }) }); await load(); setEx(null); setTerms(null); } finally { setBusy(false); } };
-  const F = ({ k, label, type = "number" }: { k: keyof Terms; label: string; type?: string }) => (
-    <label className="block text-[11px] text-slate-400">{label}
-      <input type={type} value={(terms?.[k] as string | number | null) ?? ""} onChange={(e) => setTerms({ ...terms!, [k]: e.target.value === "" ? null : type === "number" ? Number(e.target.value) : e.target.value })}
-        className="mt-0.5 w-full rounded bg-slate-950 px-2 py-1 text-sm text-slate-100 ring-1 ring-slate-700" />
-    </label>
-  );
+  const confirm = async () => { if (!ex || !terms) return; setBusy(true); try { const p = await api<Policy>("/policies/confirm", { method: "POST", body: JSON.stringify({ customer, terms, source: ex.source, source_text: ex.source_text, confirmed_by: "dispatcher" }) }); await load(); setActivated(p); setEx(null); setTerms(null); } finally { setBusy(false); } };
+  const DEFAULTS: Partial<Record<keyof Terms, number | string | boolean>> = { free_time_min: 120, rate_per_hour: 75, increment_min: 15, minimum_charge: 0, billing_start_rule: "max_checkin_appointment", requires_on_time_arrival: true };
+  const clauseFor = (k: keyof Terms): string | null => {
+    if (!terms) return null;
+    const v = terms[k];
+    const qs = terms.evidence_quotes ?? [];
+    const needles: Record<string, RegExp> = {
+      free_time_min: /free|first\s+\d/i, rate_per_hour: /\$\s?\d+(\.\d+)?\s*(\/|per)\s*(hour|hr)/i, increment_min: /increment/i, maximum_charge: /max|exceed|cap/i,
+      minimum_charge: /min(imum)?\b(?!ute)/i, billing_start_rule: /later of|from (the )?(arrival|appointment|check)/i, requires_on_time_arrival: /on[- ]time|late/i,
+    };
+    if (v == null || v === "" ) return null;
+    return qs.find((q) => needles[k as string]?.test(q)) ?? null;
+  };
+  const F = ({ k, label, type = "number" }: { k: keyof Terms; label: string; type?: string }) => {
+    const v = terms?.[k] as string | number | null;
+    const clause = clauseFor(k);
+    const unknown = v == null || v === "";
+    return (
+      <label className="block text-[11px] text-slate-400">{label}
+        {unknown && DEFAULTS[k] !== undefined && <span className="ml-1 rounded bg-amber-900/50 px-1 text-[10px] text-amber-200">not stated → default {String(DEFAULTS[k])} on confirm</span>}
+        {unknown && DEFAULTS[k] === undefined && <span className="ml-1 rounded bg-slate-800 px-1 text-[10px] text-slate-400">not stated</span>}
+        <input type={type} value={v ?? ""} placeholder={DEFAULTS[k] !== undefined ? `default ${String(DEFAULTS[k])}` : "—"} onChange={(e) => setTerms({ ...terms!, [k]: e.target.value === "" ? null : type === "number" ? Number(e.target.value) : e.target.value })}
+          className={`mt-0.5 w-full rounded bg-slate-950 px-2 py-1 text-sm text-slate-100 ring-1 ${unknown ? "ring-amber-800/60" : "ring-slate-700"}`} />
+        {clause && <div className="mt-0.5 truncate text-[10px] italic text-slate-500" title={clause}>“{clause}”</div>}
+      </label>
+    );
+  };
   return (
     <main className="mx-auto max-w-5xl p-5 text-slate-100">
       <header className="mb-4 flex items-baseline justify-between"><h1 className="text-lg font-semibold">Detention policies</h1><a href="/" className="text-sm text-cyan-400 hover:underline">← dispatcher</a></header>
@@ -40,7 +61,8 @@ export default function Policies() {
           <button disabled={busy} onClick={extract} className="rounded bg-cyan-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-cyan-500 disabled:opacity-50">{busy ? "Extracting…" : "Extract terms"}</button>
         </section>
         <section className="space-y-2">
-          {!ex && <p className="text-sm text-slate-500">Extracted terms appear here for review.</p>}
+          {!ex && activated && <div className="rounded border border-green-800 bg-green-950/40 p-2 text-sm text-green-200">Activated policy #{activated.policy_id} for <b>{activated.customer}</b>: {activated.free_time_min} min free · ${activated.rate_per_hour}/h · {activated.increment_min}-min increments{activated.maximum_charge ? ` · max $${activated.maximum_charge}` : ""} · clock from {activated.billing_start_rule.replace(/_/g, " ")}. New visits for this customer use it; the engine, not the model, computes every charge.</div>}
+          {!ex && !activated && <p className="text-sm text-slate-500">Extracted terms appear here for review.</p>}
           {ex && terms && (
             <>
               <div className="flex items-center gap-2 text-[11px]">
@@ -59,8 +81,8 @@ export default function Policies() {
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!terms.requires_on_time_arrival} onChange={(e) => setTerms({ ...terms, requires_on_time_arrival: e.target.checked })} /> requires on-time arrival</label>
               <div className="text-[11px] text-slate-400">Required evidence: <span className="text-slate-200">{terms.required_evidence.join(", ") || "—"}</span> · applies to: <span className="text-slate-200">{terms.applies_to.join(", ") || "—"}</span></div>
               {terms.evidence_quotes.length > 0 && (
-                <div className="rounded bg-slate-950 p-2 text-[11px] ring-1 ring-slate-800"><div className="mb-1 text-slate-500">Evidence quotes</div>
-                  <ul className="list-disc space-y-0.5 pl-4 text-slate-300">{terms.evidence_quotes.map((q, i) => <li key={i}>“{q}”</li>)}</ul></div>
+                <details className="rounded bg-slate-950 p-2 text-[11px] ring-1 ring-slate-800"><summary className="cursor-pointer text-slate-500">All {terms.evidence_quotes.length} evidence quotes</summary>
+                  <ul className="mt-1 list-disc space-y-0.5 pl-4 text-slate-300">{terms.evidence_quotes.map((q, i) => <li key={i}>“{q}”</li>)}</ul></details>
               )}
               {terms.notes && <div className="text-[11px] text-amber-300/90">{terms.notes}</div>}
               <button disabled={busy} onClick={confirm} className="rounded bg-green-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-600 disabled:opacity-50">Confirm &amp; activate for {customer}</button>

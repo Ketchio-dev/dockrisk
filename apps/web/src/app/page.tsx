@@ -2,7 +2,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { API, api, type Exposure, type Facility, type Snapshot } from "@/lib/api";
-import { ChargesList, ExceptionInbox, RescuePanel, VisitCard } from "@/components/Panels";
+import { ChargesList, ExceptionInbox, RescuePanel, VisitCard, storyStage } from "@/components/Panels";
 import TracePanel from "@/components/TracePanel";
 
 const FleetMap = dynamic(() => import("@/components/FleetMap"), { ssr: false });
@@ -32,7 +32,7 @@ function SimControls({ sim }: { sim: Snapshot["sim"] | undefined }) {
   const running = !!sim?.running;
   return (
     <div className="flex items-center gap-1.5 rounded bg-slate-900 px-2 py-1 ring-1 ring-slate-700">
-      <span className="font-mono text-xs text-slate-300">sim {sim?.sim_ts?.slice(0, 16) ?? "—"}</span>
+      <span className="font-mono text-xs text-slate-300">sim {sim?.sim_ts?.slice(0, 16) ?? "—"} ET</span>
       <button disabled={busy || !sim} onClick={() => send("/sim/control", { running: !running })} className="rounded bg-slate-800 px-2 py-0.5 text-xs hover:bg-slate-700 disabled:opacity-40">{running ? "❚❚ pause" : "▶ resume"}</button>
       <select disabled={busy || !sim} value={sim?.speed ?? 60} onChange={(e) => send("/sim/control", { speed: Number(e.target.value) })} className="rounded bg-slate-800 px-1 py-0.5 text-xs">
         {[30, 60, 120, 300, 900].map((v) => <option key={v} value={v}>×{v}</option>)}
@@ -60,8 +60,7 @@ export default function Dispatcher() {
         <div className="flex items-center gap-4 text-xs">
           {exposure && (
             <span className="text-slate-300" title={exposure.wording}>
-              Measured exposure <b className="text-amber-300">${exposure.monthly_exposure_low.toLocaleString()}–{exposure.monthly_exposure_high.toLocaleString()}/mo</b>
-              <span className="text-slate-500"> · {exposure.total_billable_hours} h past free time in {exposure.window_days} d · not “unbilled”</span>
+              <span className="text-slate-500">Modeled from the carrier&apos;s 62-day export:</span> <b className="text-amber-300">${exposure.monthly_exposure_low.toLocaleString()}–{exposure.monthly_exposure_high.toLocaleString()}/mo</b> <span className="text-slate-500">gross potential detention exposure · <a href="/data" className="underline decoration-dotted">assumptions</a></span>
             </span>
           )}
           <SimControls sim={snap?.sim} />
@@ -98,7 +97,12 @@ export default function Dispatcher() {
           <section>
             <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">Active facility visits · three clocks</h2>
             <div className="space-y-2">
-              {(snap?.visits ?? []).map((v) => <VisitCard key={v.visit_id} v={v} selected={v.unit === selected} onSelect={setSelected} />)}
+              {(snap?.visits ?? []).map((v, i) => {
+                const stage = storyStage(v, snap?.exceptions ?? [], snap?.assignments ?? [], snap?.charges ?? []);
+                const rescue = (snap?.assignments ?? []).find((a) => a.bill_number === v.next_load?.bill_number && a.status === "accepted" && (a.reason_json ?? "").includes('"via": "rescue"'));
+                const times = [v.timestamps.property_entered_ts, v.timestamps.checked_in_ts ?? v.timestamps.at_dock_ts, null, rescue ? (rescue as { updated_ts?: string }).updated_ts ?? null : null, v.timestamps.gate_exited_ts ?? v.timestamps.released_ts];
+                return <VisitCard key={v.visit_id} v={v} selected={v.unit === selected} onSelect={setSelected} story={i === 0 || v.next_load ? { stage, times } : undefined} />;
+              })}
               {snap && snap.visits.length === 0 && <p className="text-sm text-slate-500">No truck is inside a facility right now.</p>}
             </div>
           </section>

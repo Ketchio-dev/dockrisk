@@ -6,8 +6,11 @@ import { API, type Exception, type Facility, type FleetRow } from "@/lib/api";
 
 type Incident = { id: string | number; type: string; road: string; direction: string | null; lat: number; lon: number; description: string; lanes: string | null; full_closure: boolean; severity: "severe" | "lane" | "minor"; updated: string | null; source: string };
 
+// Street tiles come straight from OSM in the browser (their usage policy forbids proxying). The satellite layer
+// the brief requires goes through our /tiles proxy with a disk cache, so it survives a flaky venue connection
+// after one rehearsal (scripts/prefetch_tiles.py).
 const OSM = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
-const ESRI = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+const ESRI = "/tiles/sat/{z}/{y}/{x}";
 const REGION: [number, number][] = [[42.95, -81.45], [42.95, -78.2], [44.45, -78.2], [44.45, -81.45]];
 
 const ring = (g: { coordinates: number[][][] } | null) => (g ? (g.coordinates[0].map(([lon, lat]) => [lat, lon]) as [number, number][]) : null);

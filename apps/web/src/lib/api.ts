@@ -36,7 +36,7 @@ export type Charge = {
   billable_min: number; rate_per_hour: number; amount: number; confidence: number; review_required: number; reason_codes: string[]; status: string; facility_name: string; created_ts: string;
 };
 export type Assignment = {
-  assignment_id: number; bill_number: string; driver_name: string; unit: string | null; status: string; reason_json?: string | null; orig_city: string | null; dest_city: string | null;
+  assignment_id: number; bill_number: string; driver_name: string; unit: string | null; status: string; reason_json?: string | null; updated_ts?: string | null; orig_city: string | null; dest_city: string | null;
   customer: string | null; load_type: string | null; weight_lbs: number | null; pickup_by_start: string | null; pickup_by_end: string | null;
 };
 export type Snapshot = { sim: { sim_ts: string; speed: number; running: number; scenario?: string }; fleet: FleetRow[]; visits: Visit[]; exceptions: Exception[]; charges: Charge[]; assignments: Assignment[] };
@@ -54,3 +54,4 @@ export type Exposure = {
 export const fmtMin = (m: number | null | undefined) => { if (m == null) return "—"; const t = Math.round(m); return `${Math.floor(t / 60)}h ${String(t % 60).padStart(2, "0")}m`; };
 export const fmtH = (h: number | null | undefined) => { if (h == null) return "—"; const t = Math.round(Math.abs(h) * 60); return `${h < 0 ? "−" : ""}${Math.floor(t / 60)}h ${String(t % 60).padStart(2, "0")}m`; };
 export const hhmm = (ts: string | null | undefined) => (ts ? ts.slice(11, 16) : "—");
+export const TZ = "ET"; // all sim and export timestamps are America/Toronto local time, stored without offset
