@@ -105,14 +105,32 @@ class Sim:
         self.t: datetime = datetime(2026, 9, 8, 7, 30)
         self.closure: dict | None = None
 
-    # ---------- API helpers ----------
+    # ---------- API helpers (survive an API restart: retry connection errors and 5xx for up to ~90 s) ----------
+    def _retry(self, fn, what):
+        delay, waited = 0.5, 0.0
+        while True:
+            try:
+                r = fn()
+                if r.status_code >= 500:
+                    raise httpx.HTTPStatusError(f"{r.status_code}", request=r.request, response=r)
+                r.raise_for_status()
+                return r.json()
+            except (httpx.ConnectError, httpx.ReadTimeout, httpx.HTTPStatusError) as e:
+                if isinstance(e, httpx.HTTPStatusError) and e.response is not None and e.response.status_code < 500:
+                    raise
+                if waited >= 90:
+                    raise
+                if waited == 0:
+                    print(f"!! API unreachable ({what}): {type(e).__name__} — retrying", flush=True)
+                time.sleep(delay)
+                waited += delay
+                delay = min(delay * 1.6, 5.0)
+
     def get(self, path, **params):
-        return self.http.get(f"{self.api}{path}", params=params).json()
+        return self._retry(lambda: self.http.get(f"{self.api}{path}", params=params), f"GET {path}")
 
     def post(self, path, body):
-        r = self.http.post(f"{self.api}{path}", json=body)
-        r.raise_for_status()
-        return r.json()
+        return self._retry(lambda: self.http.post(f"{self.api}{path}", json=body), f"POST {path}")
 
     # ---------- scenario ----------
     def build_dock_squeeze(self):
@@ -336,12 +354,53 @@ class Sim:
                                           "proposed_actions": ["re-estimate ETAs for trucks in the corridor",
                                                                "s.76 adverse conditions: possible 2 h extension — eligibility not assumed, review required"]})
 
+    def control(self) -> str:
+        """Read the shared clock row. Returns 'run', 'pause' or 'reset' (row missing => the UI reset the scenario)."""
+        try:
+            c = self.get("/sim/clock")
+        except Exception:
+            return "run"
+        if "id" not in c:
+            return "reset"
+        if c.get("speed") and float(c["speed"]) != self.speed:
+            self.speed = float(c["speed"])
+            print(f"[{self.t:%H:%M}] speed -> x{self.speed}", flush=True)
+        return "run" if c.get("running") else "pause"
+
+    def rebuild(self, reset: bool):
+        """Start the scenario over from t0 with the same seed: identical replay."""
+        self.rng = random.Random(self.seed)
+        self.trucks = []
+        self.closure = None
+        self.t = datetime(2026, 9, 8, 7, 30)
+        self.build_dock_squeeze()
+        self.seed_api(reset)
+        print(f"[{self.t:%H:%M}] scenario rebuilt (seed {self.seed})", flush=True)
+
     def run(self, max_sim_hours: float):
         end = self.t + timedelta(hours=max_sim_hours)
         wall_per_tick = self.tick / self.speed
         n = 0
-        while self.t < end and any(tr.state not in ("done", "standby") for tr in self.trucks):
+        while True:
+            if self.t >= end or not any(tr.state not in ("done", "standby") for tr in self.trucks):
+                # finished: idle until the UI resets, so the demo can be replayed without restarting the process
+                self.post("/sim/clock", {"sim_ts": self.t.isoformat(sep=" "), "speed": self.speed, "running": False})
+                print("scenario finished — waiting for reset", flush=True)
+                while self.control() != "reset":
+                    time.sleep(1.0)
+                self.rebuild(reset=False)
+                end = self.t + timedelta(hours=max_sim_hours)
+                continue
             t0 = time.time()
+            state = self.control() if n % 2 == 0 else "run"
+            if state == "reset":
+                self.rebuild(reset=False)
+                end = self.t + timedelta(hours=max_sim_hours)
+                continue
+            if state == "pause":
+                time.sleep(0.5)
+                continue
+            wall_per_tick = self.tick / self.speed
             self.fire_events()
             if n % 4 == 0:
                 self.dispatch_relief()
@@ -359,8 +418,6 @@ class Sim:
             if n % 20 == 0:
                 print(f"[{self.t:%H:%M}] " + " | ".join(f"{tr.unit}:{tr.state[:3]} {tr.speed_kmh:.0f}km/h" for tr in self.trucks), flush=True)
             time.sleep(max(0.0, wall_per_tick - (time.time() - t0)))
-        self.post("/sim/clock", {"sim_ts": self.t.isoformat(sep=" "), "speed": self.speed, "running": False})
-        print("scenario finished", flush=True)
 
 
 def main():
@@ -370,7 +427,7 @@ def main():
     ap.add_argument("--speed", type=float, default=60.0, help="sim seconds per wall second")
     ap.add_argument("--tick", type=int, default=30, help="sim seconds per ping")
     ap.add_argument("--seed", type=int, default=7)
-    ap.add_argument("--hours", type=float, default=7.0)
+    ap.add_argument("--hours", type=float, default=7.0, help="sim hours per replay; the process then waits for a UI reset")
     ap.add_argument("--reset", action="store_true")
     a = ap.parse_args()
     sim = Sim(a.api, a.speed, a.tick, a.seed)

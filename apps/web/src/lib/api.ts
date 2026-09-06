@@ -51,6 +51,6 @@ export type Exposure = {
   assumptions: Record<string, unknown>; wording: string;
 };
 
-export const fmtMin = (m: number | null | undefined) => (m == null ? "—" : `${Math.floor(m / 60)}h ${String(Math.round(m % 60)).padStart(2, "0")}m`);
-export const fmtH = (h: number | null | undefined) => (h == null ? "—" : `${h >= 0 ? "" : "−"}${Math.floor(Math.abs(h))}h ${String(Math.round((Math.abs(h) % 1) * 60)).padStart(2, "0")}m`);
+export const fmtMin = (m: number | null | undefined) => { if (m == null) return "—"; const t = Math.round(m); return `${Math.floor(t / 60)}h ${String(t % 60).padStart(2, "0")}m`; };
+export const fmtH = (h: number | null | undefined) => { if (h == null) return "—"; const t = Math.round(Math.abs(h) * 60); return `${h < 0 ? "−" : ""}${Math.floor(t / 60)}h ${String(t % 60).padStart(2, "0")}m`; };
 export const hhmm = (ts: string | null | undefined) => (ts ? ts.slice(11, 16) : "—");

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { CircleMarker, MapContainer, Polygon, Polyline, TileLayer, Tooltip, Circle } from "react-leaflet";
+import { CircleMarker, MapContainer, Polygon, Polyline, TileLayer, Tooltip, Circle, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { API, type Exception, type Facility, type FleetRow } from "@/lib/api";
 
@@ -11,6 +11,18 @@ const ESRI = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery
 const REGION: [number, number][] = [[42.95, -81.45], [42.95, -78.2], [44.45, -78.2], [44.45, -81.45]];
 
 const ring = (g: { coordinates: number[][][] } | null) => (g ? (g.coordinates[0].map(([lon, lat]) => [lat, lon]) as [number, number][]) : null);
+const REGION_VIEW: { center: [number, number]; zoom: number } = { center: [43.45, -80.0], zoom: 8 };
+
+function FlyTo({ target }: { target: { lat: number; lon: number; zoom: number } | null }) {
+  const map = useMap();
+  useEffect(() => { if (target) map.flyTo([target.lat, target.lon], target.zoom, { duration: 0.8 }); }, [target, map]);
+  return null;
+}
+function ResetView({ token }: { token: number }) {
+  const map = useMap();
+  useEffect(() => { if (token) map.flyTo(REGION_VIEW.center, REGION_VIEW.zoom, { duration: 0.8 }); }, [token, map]);
+  return null;
+}
 
 export default function FleetMap({ fleet, facilities, exceptions, selected, onSelect }: {
   fleet: FleetRow[]; facilities: Facility[]; exceptions: Exception[]; selected: string | null; onSelect: (unit: string | null) => void;
@@ -34,10 +46,13 @@ export default function FleetMap({ fleet, facilities, exceptions, selected, onSe
   }, [selected]);
   const closures = useMemo(() => exceptions.filter((e) => e.kind === "closure" && typeof e.detail.lat === "number"), [exceptions]);
   const sel = fleet.find((f) => f.unit === selected);
+  const [resetToken, setResetToken] = useState(0);
+  const target = useMemo(() => (sel ? { lat: sel.lat, lon: sel.lon, zoom: sel.visit ? 15 : 11 } : null), [sel?.unit, sel?.visit?.visit_id]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="relative h-full w-full">
-      <MapContainer center={[43.45, -80.0]} zoom={8} className="h-full w-full" style={{ background: "#0b0f14" }}>
+      <MapContainer center={REGION_VIEW.center} zoom={REGION_VIEW.zoom} className="h-full w-full" style={{ background: "#0b0f14" }}>
+        <FlyTo target={target} /><ResetView token={resetToken} />
         <TileLayer key={satellite ? "sat" : "osm"} url={satellite ? ESRI : OSM}
           attribution={satellite ? "Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics" : "© OpenStreetMap contributors"} />
         <Polygon positions={REGION} pathOptions={{ color: "#7c8ea3", weight: 1, dashArray: "6 6", fill: false }} />
@@ -67,10 +82,11 @@ export default function FleetMap({ fleet, facilities, exceptions, selected, onSe
         {crumbs.length > 1 && <Polyline positions={crumbs} pathOptions={{ color: "#22d3ee", weight: 3, opacity: 0.8 }} />}
         {fleet.map((f) => {
           const atDock = !!f.visit; const isSel = f.unit === selected;
+          const moving = (f.speed_kmh ?? 0) > 3;
           const hosWarn = f.hos && f.hos.remaining_onduty_h < 1.5;
           return (
             <CircleMarker key={f.unit} center={[f.lat, f.lon]} radius={isSel ? 10 : 7}
-              pathOptions={{ color: isSel ? "#fff" : "#0f172a", weight: isSel ? 3 : 1, fillColor: hosWarn ? "#ef4444" : atDock ? "#f59e0b" : "#22c55e", fillOpacity: 0.95 }}
+              pathOptions={{ color: isSel ? "#fff" : "#0f172a", weight: isSel ? 3 : 1, fillColor: hosWarn ? "#ef4444" : atDock ? "#f59e0b" : moving ? "#22c55e" : "#64748b", fillOpacity: 0.95 }}
               eventHandlers={{ click: () => onSelect(isSel ? null : f.unit) }}>
               <Tooltip direction="top" offset={[0, -8]}>
                 <b>{f.unit}</b> {f.driver_name} · {Math.round(f.speed_kmh)} km/h · {f.duty_status}
@@ -88,11 +104,13 @@ export default function FleetMap({ fleet, facilities, exceptions, selected, onSe
         <button onClick={() => setSatellite((s) => !s)} className="rounded bg-slate-900/90 px-3 py-1.5 text-xs font-medium text-slate-100 shadow ring-1 ring-slate-600 hover:bg-slate-800">
           {satellite ? "Map view" : "Satellite view"}
         </button>
+        <button onClick={() => { onSelect(null); setResetToken((t) => t + 1); }} className="rounded bg-slate-900/90 px-3 py-1.5 text-xs font-medium text-slate-100 shadow ring-1 ring-slate-600 hover:bg-slate-800">Region</button>
       </div>
       <div className="absolute bottom-3 left-3 z-[1000] rounded bg-slate-900/85 px-3 py-2 text-[11px] text-slate-200 ring-1 ring-slate-700">
-        <span className="mr-3"><i className="inline-block h-2.5 w-2.5 rounded-full bg-green-500" /> moving</span>
-        <span className="mr-3"><i className="inline-block h-2.5 w-2.5 rounded-full bg-amber-500" /> at facility</span>
-        <span className="mr-3"><i className="inline-block h-2.5 w-2.5 rounded-full bg-red-500" /> HOS margin &lt; 1.5 h</span>
+        <span className="mr-3"><i className="inline-block h-2.5 w-2.5 rounded-full bg-green-500" /> moving (&gt;3 km/h)</span>
+        <span className="mr-3"><i className="inline-block h-2.5 w-2.5 rounded-full bg-slate-500" /> stopped / standby</span>
+        <span className="mr-3"><i className="inline-block h-2.5 w-2.5 rounded-full bg-amber-500" /> inside a facility</span>
+        <span className="mr-3"><i className="inline-block h-2.5 w-2.5 rounded-full bg-red-500" /> on-duty left &lt; 1.5 h</span>
         <span className="mr-3"><i className="inline-block h-2.5 w-4 border-2 border-blue-500" /> property</span>
         <span className="mr-3"><i className="inline-block h-2.5 w-4 border-2 border-amber-500" /> dock</span>
         <span className="mr-3"><i className="inline-block h-2.5 w-4 border border-dashed border-slate-400" /> centroid (sim geometry)</span>

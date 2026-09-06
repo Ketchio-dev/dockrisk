@@ -24,3 +24,7 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* dockrisk-text: lift the smallest UI text one notch for projector legibility */
+.text-\[10px\] { font-size: 11px; }
+.text-\[11px\] { font-size: 12px; }

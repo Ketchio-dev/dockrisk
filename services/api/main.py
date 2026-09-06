@@ -299,6 +299,23 @@ def set_clock(c: ClockIn):
     return get_clock()
 
 
+class ControlIn(BaseModel):
+    running: bool | None = None
+    speed: float | None = None
+
+
+@app.post("/sim/control")
+def sim_control(c: ControlIn):
+    """Pause/resume and speed. The simulator polls /sim/clock each tick and honors these."""
+    cur = get_clock()
+    if "id" not in cur:
+        raise HTTPException(409, "no scenario running")
+    S.conn.execute("UPDATE sim_clock SET running=COALESCE(?, running), speed=COALESCE(?, speed), updated_wall_ts=? WHERE id=1",
+                   (None if c.running is None else int(c.running), c.speed, datetime.now().isoformat(sep=" ")))
+    S.conn.commit()
+    return get_clock()
+
+
 @app.post("/sim/reset")
 def sim_reset():
     """Wipe live state (telemetry, visits, charges, duty, assignments, exceptions). Reference data stays."""
@@ -333,6 +350,9 @@ class TelemetryBatch(BaseModel):
 @app.post("/ingest/telemetry")
 def ingest_telemetry(b: TelemetryBatch):
     if b.clock:
+        cur = row("SELECT running, speed FROM sim_clock WHERE id=1")
+        if cur:  # UI-set pause/speed win over the simulator's own values
+            b.clock.running = bool(cur["running"]); b.clock.speed = cur["speed"]
         set_clock(b.clock)
     cur = S.conn.cursor()
     fired = []
@@ -625,14 +645,24 @@ def refresh_exceptions():
             S.conn.execute("UPDATE exceptions SET status='resolved', resolved_ts=?, resolution='load reassigned' WHERE exception_id=?", (now.isoformat(sep=" "), e["exception_id"]))
     # live severe 511 incidents become inbox items only when a tracked truck is within 15 km — otherwise they are map markers
     fleet_pos = rows("""SELECT t.unit, t.lat, t.lon FROM telemetry t JOIN (SELECT unit, MAX(sim_ts) m FROM telemetry GROUP BY unit) x ON x.unit=t.unit AND x.m=t.sim_ts""")
+    scored = []
     for inc in [i for i in fetch_incidents() if i["severity"] == "severe"]:
-        near = [f["unit"] for f in fleet_pos if haversine_km(f["lat"], f["lon"], inc["lat"], inc["lon"]) <= 15]
-        if not near:
-            continue
-        title = f"[511 live] {inc['road']} {inc['direction'] or ''}: {inc['description'][:100]} — near {', '.join(near[:3])}"
-        upsert_exception("closure", "warn", near[0], None, None, None, title,
+        dists = sorted((haversine_km(f["lat"], f["lon"], inc["lat"], inc["lon"]), f["unit"]) for f in fleet_pos)
+        near = [u for d, u in dists if d <= 15]
+        if near:
+            scored.append((dists[0][0], inc, near))
+    # inbox gets at most the 3 closest live closures; everything else stays a map marker
+    open_ids = {row("SELECT json_extract(detail_json,'$.id') i FROM exceptions WHERE exception_id=?", e["exception_id"])["i"]
+                for e in rows("SELECT exception_id FROM exceptions WHERE status='open' AND kind='closure'")}
+    for d, inc, near in sorted(scored, key=lambda x: x[0])[:3]:
+        title = f"[511 live] {inc['road']} {inc['direction'] or ''}: {inc['description'][:100]} — {d:.0f} km from {', '.join(near[:3])}"
+        upsert_exception("closure", "warn" if d <= 5 else "info", near[0], None, None, None, title,
                          {"id": str(inc["id"]), "lat": inc["lat"], "lon": inc["lon"], "radius_km": 8, "source": inc["source"], "lanes": inc["lanes"], "full_closure": inc["full_closure"], "near_units": near},
                          ["re-estimate ETAs for trucks in the corridor", "s.76 adverse conditions: possible 2 h extension — eligibility not assumed, review required"])
+    keep = {str(inc["id"]) for _, inc, _ in sorted(scored, key=lambda x: x[0])[:3]}
+    for e in rows("SELECT exception_id, json_extract(detail_json,'$.id') i, json_extract(detail_json,'$.source') src FROM exceptions WHERE status='open' AND kind='closure'"):
+        if e["src"] and "511" in str(e["src"]) and e["i"] and e["i"] not in keep:
+            S.conn.execute("UPDATE exceptions SET status='resolved', resolved_ts=?, resolution='no longer near a tracked truck' WHERE exception_id=?", (now.isoformat(sep=" "), e["exception_id"]))
     S.conn.execute("""UPDATE exceptions SET status='resolved', resolved_ts=?, resolution='expired' WHERE status='open' AND kind='closure'
                       AND julianday(?) - julianday(sim_ts) > 2.0/24""", (now.isoformat(sep=" "), now.isoformat(sep=" ")))
     # resolve exceptions whose visit closed
