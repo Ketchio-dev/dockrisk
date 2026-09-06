@@ -51,14 +51,14 @@ export default function Policies() {
   };
   return (
     <main className="mx-auto max-w-5xl p-5 text-gray-900">
-      <header className="mb-4 flex items-baseline justify-between"><h1 className="text-lg font-semibold">Detention policies</h1><a href="/" className="text-sm text-blue-700 hover:underline">← dispatcher</a></header>
-      <p className="mb-4 text-sm text-gray-500">AI where language is messy, rules where money is precise: the model turns a rate confirmation into a draft with quoted evidence; you confirm it; the deterministic engine does every calculation.</p>
+      <header className="mb-3 flex items-baseline justify-between"><h1 className="text-lg font-semibold">Detention policies</h1><a href="/" className="text-sm">← Dispatch</a></header>
+      <p className="mb-5 max-w-2xl text-sm text-gray-500">The model reads a rate confirmation and drafts the detention terms with quoted evidence. You confirm them. The engine — not the model — computes every charge.</p>
       <div className="grid grid-cols-2 gap-4">
         <section className="space-y-2">
           <label className="block text-[11px] text-gray-500">Customer<input value={customer} onChange={(e) => setCustomer(e.target.value)} className="mt-0.5 w-full rounded bg-white px-2 py-1 text-sm border border-gray-300" /></label>
           <label className="block text-[11px] text-gray-500">Rate confirmation / agreement text
             <textarea value={text} onChange={(e) => setText(e.target.value)} rows={12} className="mt-0.5 w-full rounded bg-white p-2 font-mono text-[12px] text-gray-800 border border-gray-300" /></label>
-          <button disabled={busy} onClick={extract} className="rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50">{busy ? "Extracting…" : "Extract terms"}</button>
+          <button disabled={busy} onClick={extract} className="btn btn-primary">{busy ? "Extracting…" : "Extract terms"}</button>
         </section>
         <section className="space-y-2">
           {!ex && activated && <div className="rounded border border-green-300 bg-green-50 p-2 text-sm text-green-800">Activated policy #{activated.policy_id} for <b>{activated.customer}</b>: {activated.free_time_min} min free · ${activated.rate_per_hour}/h · {activated.increment_min}-min increments{activated.maximum_charge ? ` · max $${activated.maximum_charge}` : ""} · clock from {activated.billing_start_rule.replace(/_/g, " ")}. New visits for this customer use it; the engine, not the model, computes every charge.</div>}
@@ -85,17 +85,18 @@ export default function Policies() {
                   <ul className="mt-1 list-disc space-y-0.5 pl-4 text-gray-700">{terms.evidence_quotes.map((q, i) => <li key={i}>“{q}”</li>)}</ul></details>
               )}
               {terms.notes && <div className="text-[11px] text-amber-700">{terms.notes}</div>}
-              <button disabled={busy} onClick={confirm} className="rounded bg-green-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-600 disabled:opacity-50">Confirm &amp; activate for {customer}</button>
+              <button disabled={busy} onClick={confirm} className="btn btn-primary">Confirm and activate for {customer}</button>
             </>
           )}
         </section>
       </div>
       <section className="mt-6">
-        <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">Active policies</h2>
-        <table className="w-full text-[11px]">
-          <thead className="text-gray-500"><tr><th className="text-left font-normal">Scope</th><th className="text-right font-normal">Free</th><th className="text-right font-normal">Rate</th><th className="text-right font-normal">Incr.</th><th className="text-right font-normal">Max</th><th className="text-left font-normal">Clock</th><th className="text-left font-normal">Source</th></tr></thead>
+        <div className="mb-1 flex items-baseline justify-between"><h2 className="text-sm font-semibold text-gray-900">Active policies</h2><span className="label">facility overrides customer overrides default</span></div>
+        <table className="w-full table-fixed text-xs">
+          <colgroup><col /><col className="w-[64px]" /><col className="w-[72px]" /><col className="w-[56px]" /><col className="w-[64px]" /><col className="w-[220px]" /><col className="w-[220px]" /></colgroup>
+          <thead className="label"><tr className="rule-b"><th className="py-1 text-left font-normal">Scope</th><th className="py-1 pr-3 text-right font-normal">Free</th><th className="py-1 pr-3 text-right font-normal">Rate</th><th className="py-1 pr-3 text-right font-normal">Incr.</th><th className="py-1 pr-3 text-right font-normal">Cap</th><th className="py-1 text-left font-normal">Clock starts</th><th className="py-1 text-left font-normal">Source</th></tr></thead>
           <tbody>{policies.map((p) => (
-            <tr key={p.policy_id} className="border-t border-gray-200"><td className="py-1">{p.scope}{p.customer ? ` · ${p.customer}` : ""}</td><td className="text-right">{p.free_time_min}m</td><td className="text-right">${p.rate_per_hour}/h</td><td className="text-right">{p.increment_min}m</td><td className="text-right">{p.maximum_charge ? `$${p.maximum_charge}` : "—"}</td><td>{p.billing_start_rule.replace(/_/g, " ")}{p.requires_on_time_arrival ? " · on-time req." : ""}</td><td className="text-gray-500">{p.source}{p.confirmed_by ? ` · ${p.confirmed_by}` : ""}</td></tr>
+            <tr key={p.policy_id} className="rule-b"><td className="py-2 text-gray-900">{p.scope === "default" ? "Default" : `${p.customer ?? p.scope}`}</td><td className="num py-2 pr-3 text-right">{p.free_time_min} min</td><td className="num py-2 pr-3 text-right">${p.rate_per_hour}/h</td><td className="num py-2 pr-3 text-right">{p.increment_min} min</td><td className="num py-2 pr-3 text-right">{p.maximum_charge ? `$${p.maximum_charge}` : "—"}</td><td className="py-2 text-gray-700">{p.billing_start_rule.replace(/_/g, " ")}{p.requires_on_time_arrival ? ", on-time required" : ""}</td><td className="py-2 text-gray-500">{p.source}{p.confirmed_by ? ` · ${p.confirmed_by}` : ""}</td></tr>
           ))}</tbody>
         </table>
       </section>
