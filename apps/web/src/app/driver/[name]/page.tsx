@@ -29,21 +29,6 @@ export default function DriverApp({ params }: { params: Promise<{ name: string }
       </header>
       <p className="label mb-4">Duty-status companion — a prototype, not a certified ELD</p>
 
-      <section className="mb-6">
-        <div className="mb-2 flex items-baseline justify-between"><h2 className="text-sm font-semibold">Hours</h2><span className="text-sm text-gray-500">now <span className="font-medium text-gray-900">{(me?.duty_status ?? "—").replace("_", " ")}</span></span></div>
-        {me?.hos ? (
-          <div className="rule-t rule-b grid grid-cols-3 gap-3 py-3">
-            {[["Drive left", me.hos.remaining_drive_h], ["On-duty left", me.hos.remaining_onduty_h], ["Window left", me.hos.remaining_elapsed_h]].map(([l, v]) => (
-              <div key={l as string}><div className="label">{l}</div><div className={`num text-[26px] font-semibold leading-tight ${(v as number) < 1.5 ? "t-bad" : "text-gray-900"}`}>{fmtH(v as number)}</div></div>
-            ))}
-          </div>
-        ) : <p className="text-sm text-gray-500">No duty history yet.</p>}
-        {me?.hos && <div className="mt-1 text-xs text-gray-500">Limiting: {me.hos.binding}{me.hos.provenance ? ` · ${me.hos.provenance}` : ""}{me.hos.cycle_note ? ` · ${me.hos.cycle_note}` : ""}</div>}
-        <div className="mt-3 grid grid-cols-4 gap-2">
-          {["off", "sleeper", "driving", "on_duty"].map((s) => <button key={s} disabled={busy} onClick={() => duty(s)} className={`btn justify-center ${me?.duty_status === s ? "bg-gray-900 text-white border-gray-900 hover:bg-gray-800" : ""}`}>{s.replace("_", " ")}</button>)}
-        </div>
-      </section>
-
       {visit && (
         <section className="mb-6">
           <div className="mb-1 flex items-baseline justify-between"><h2 className="text-sm font-semibold">At {visit.facility?.name}</h2><span className="text-xs text-gray-500">{visit.state.replace(/_/g, " ").toLowerCase()}</span></div>
@@ -71,6 +56,21 @@ export default function DriverApp({ params }: { params: Promise<{ name: string }
           </div>
         </section>
       )}
+
+      <section className="mb-6">
+        <div className="mb-2 flex items-baseline justify-between"><h2 className="text-sm font-semibold">Hours</h2><span className="text-sm text-gray-500">now <span className="font-medium text-gray-900">{(me?.duty_status ?? "—").replace("_", " ")}</span></span></div>
+        {me?.hos ? (
+          <div className="rule-t rule-b grid grid-cols-3 gap-3 py-3">
+            {[["Drive left", me.hos.remaining_drive_h], ["On-duty left", me.hos.remaining_onduty_h], ["Window left", me.hos.remaining_elapsed_h]].map(([l, v]) => (
+              <div key={l as string}><div className="label">{l}</div><div className={`num text-[26px] font-semibold leading-tight ${(v as number) < 1.5 ? "t-bad" : "text-gray-900"}`}>{fmtH(v as number)}</div></div>
+            ))}
+          </div>
+        ) : <p className="text-sm text-gray-500">No duty history yet.</p>}
+        {me?.hos && <div className="mt-1 text-xs text-gray-500">Limiting: {me.hos.binding}{me.hos.provenance ? ` · ${me.hos.provenance}` : ""}{me.hos.cycle_note ? ` · ${me.hos.cycle_note}` : ""}</div>}
+        <div className="mt-3 grid grid-cols-4 gap-2">
+          {["off", "sleeper", "driving", "on_duty"].map((s) => <button key={s} disabled={busy} onClick={() => duty(s)} className={`btn justify-center ${me?.duty_status === s ? "bg-gray-900 text-white border-gray-900 hover:bg-gray-800" : ""}`}>{s.replace("_", " ")}</button>)}
+        </div>
+      </section>
 
       {offers.length > 0 && (
         <section className="mb-4 rounded-lg bg-blue-50 p-3 ring-1 border-blue-200">

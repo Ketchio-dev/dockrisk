@@ -2,7 +2,8 @@
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { API, api, type Exposure, type Facility, type Snapshot, cityCase } from "@/lib/api";
-import { ChargesList, ExceptionInbox, RescuePanel, VisitCard, storyStage } from "@/components/Panels";
+import { ChargesList, RescuePanel } from "@/components/Panels";
+import { Board, RoadStrip } from "@/components/Board";
 import TracePanel from "@/components/TracePanel";
 
 const FleetMap = dynamic(() => import("@/components/FleetMap"), { ssr: false });
@@ -73,38 +74,9 @@ export default function Dispatcher() {
           <FleetMap fleet={snap?.fleet ?? []} facilities={facilities} exceptions={snap?.exceptions ?? []} selected={selected} onSelect={setSelected} />
         </div>
         <aside className="surface col-span-2 min-h-0 space-y-6 overflow-y-auto border-l border-gray-200 px-4 py-3">
-          <ExceptionInbox exceptions={snap?.exceptions ?? []} onRescue={(bill, driver) => setRescue({ bill, driver })} onSelect={setSelected} />
-          {(() => {
-            const simDay = snap?.sim?.sim_ts?.slice(0, 10);
-            const rescues = (snap?.assignments ?? []).filter((a) => (a.status === "offered" || a.status === "accepted" || a.status === "rejected") && (a.reason_json ?? "").includes('"via": "rescue"'));
-            if (rescues.length === 0) return null;
-            return (
-              <section>
-                <div className="mb-1 flex items-baseline justify-between"><h2 className="text-sm font-semibold text-gray-900">Relief coverage</h2><span className="label">loads moved by rescue</span></div>
-                <div className="rule-t">
-                  {rescues.slice(0, 6).map((a) => (
-                    <button key={a.assignment_id} onClick={() => setSelected(a.unit)} className={`rule-b flex w-full items-center justify-between py-2 pl-3 text-left text-xs ${a.status === "offered" ? "bar-warn" : a.status === "rejected" ? "bar-bad" : "bar-ok"}`}>
-                      <span className="text-gray-900"><span className="font-medium">{a.bill_number}</span> {cityCase(a.orig_city)} → {cityCase(a.dest_city)} <span className="num text-gray-500">· pickup by {a.pickup_by_end && a.pickup_by_end.slice(0, 10) === simDay ? a.pickup_by_end.slice(11, 16) : "—"}</span></span>
-                      <span className={a.status === "offered" ? "t-warn" : a.status === "rejected" ? "t-bad" : "t-ok"}>{a.driver_name} · {a.unit} · {a.status === "offered" ? "offered, awaiting driver" : a.status === "rejected" ? "declined" : "accepted"}</span>
-                    </button>
-                  ))}
-                </div>
-              </section>
-            );
-          })()}
-          <section>
-            <div className="mb-1 flex items-baseline justify-between"><h2 className="text-sm font-semibold text-gray-900">At facilities</h2><span className="label">{snap?.visits.length ?? 0} trucks · select a row for details</span></div>
-            <div className="rule-t">
-              {(snap?.visits ?? []).map((v, i) => {
-                const stage = storyStage(v, snap?.exceptions ?? [], snap?.assignments ?? [], snap?.charges ?? []);
-                const rescue = (snap?.assignments ?? []).find((a) => a.bill_number === v.next_load?.bill_number && a.status === "accepted" && (a.reason_json ?? "").includes('"via": "rescue"'));
-                const times = [v.timestamps.property_entered_ts, v.timestamps.checked_in_ts ?? v.timestamps.at_dock_ts, null, rescue ? (rescue as { updated_ts?: string }).updated_ts ?? null : null, v.timestamps.gate_exited_ts ?? v.timestamps.released_ts];
-                const expanded = selected ? v.unit === selected : i === 0;   // the selected row opens; with nothing selected, the most urgent one does
-                return <VisitCard key={v.visit_id} v={v} selected={v.unit === selected} onSelect={setSelected} story={{ stage, times }} expanded={expanded} />;
-              })}
-              {snap && snap.visits.length === 0 && <p className="py-3 text-sm text-gray-500">No truck is inside a facility right now.</p>}
-            </div>
-          </section>
+          <Board fleet={snap?.fleet ?? []} visits={snap?.visits ?? []} exceptions={snap?.exceptions ?? []} assignments={snap?.assignments ?? []} charges={snap?.charges ?? []}
+            selected={selected} onSelect={setSelected} onRescue={(bill, driver) => setRescue({ bill, driver })} now={snap?.sim?.sim_ts} />
+          <RoadStrip exceptions={snap?.exceptions ?? []} onSelect={setSelected} />
           {selected && <TracePanel unit={selected} />}
           <ChargesList charges={snap?.charges ?? []} />
         </aside>

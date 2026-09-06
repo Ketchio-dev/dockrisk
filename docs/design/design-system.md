@@ -16,6 +16,27 @@ from real product screens, not templates.
 Screens are in the session scratchpad (`design-refs/`); they are vendor marketing/product pages and are not
 redistributed here.
 
+## Information architecture (second pass, same night)
+
+Who reads the dispatcher screen: a dispatcher scanning for the few trucks about to become a problem; a judge
+at 4 m for ten minutes; nobody reads paragraphs. The product's object is **a truck whose two deadlines are
+converging** (billing clock vs hours-of-service), and the action is a reassignment. So:
+
+- **One board, not two lists.** The old layout described the same truck twice (an "Exceptions" row and an
+  "At facilities" row). Now every truck with telemetry is one row, **ranked by urgency** (hours to a legal
+  stop, then minutes to billable, then moving/stopped). The alert is the row's status word, not a separate
+  item. Only the selected (or, if none, the most urgent) row is open; the rest are one line of aligned numbers.
+- **Deadlines first.** Column order is *Billable in · Hours to a legal stop · Waiting*; the binding deadline
+  is ink, the other is gray. Physical dwell is context and comes last. When the truck is early for its
+  appointment the first column says *starts 11:15* instead of a running timer.
+- **Road events are a strip**, not alerts: Ontario 511 items near a truck sit in a three-line "Road" block
+  under the board; on the map, only severe events show at region zoom, lane closures from zoom 10.
+- **Expanded row carries the whole pitch**: the story timeline, three large numbers, the next-load verdict
+  with the three margins (at arrival / if released now / after the predicted wait), the empirical dwell
+  prediction with its n, the review reasons, and one blue button.
+- **Driver app**: the facility block comes first when the driver is at one; a single filled button is the
+  next expected action.
+
 ## Tokens (`apps/web/src/app/globals.css`)
 
 | Token | Value | Use |

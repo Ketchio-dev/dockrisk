@@ -21,6 +21,11 @@ function FlyTo({ target }: { target: { lat: number; lon: number; zoom: number } 
   useEffect(() => { if (target) map.flyTo([target.lat, target.lon], target.zoom, { duration: 0.8 }); }, [target, map]);
   return null;
 }
+function ZoomWatch({ onZoom }: { onZoom: (z: number) => void }) {
+  const map = useMap();
+  useEffect(() => { onZoom(map.getZoom()); const h = () => onZoom(map.getZoom()); map.on("zoomend", h); return () => { map.off("zoomend", h); }; }, [map, onZoom]);
+  return null;
+}
 function ResetView({ token }: { token: number }) {
   const map = useMap();
   useEffect(() => { if (token) map.flyTo(REGION_VIEW.center, REGION_VIEW.zoom, { duration: 0.8 }); }, [token, map]);
@@ -34,6 +39,7 @@ export default function FleetMap({ fleet, facilities, exceptions, selected, onSe
   const [crumbs, setCrumbs] = useState<[number, number][]>([]);
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [showMinor, setShowMinor] = useState(false);
+  const [zoom, setZoom] = useState(8);
   useEffect(() => {
     let live = true;
     const load = () => fetch(`${API}/incidents`).then((r) => r.json()).then((d: { incidents: Incident[] }) => live && setIncidents(d.incidents)).catch(() => {});
@@ -55,7 +61,7 @@ export default function FleetMap({ fleet, facilities, exceptions, selected, onSe
   return (
     <div className="relative h-full w-full">
       <MapContainer center={REGION_VIEW.center} zoom={REGION_VIEW.zoom} className="h-full w-full" style={{ background: "#e5e7eb" }}>
-        <FlyTo target={target} /><ResetView token={resetToken} />
+        <FlyTo target={target} /><ResetView token={resetToken} /><ZoomWatch onZoom={setZoom} />
         <TileLayer key={satellite ? "sat" : "osm"} url={satellite ? ESRI : OSM}
           attribution={satellite ? "Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics" : "© OpenStreetMap contributors"} />
         <Polygon positions={REGION} pathOptions={{ color: "#9ca3af", weight: 1, dashArray: "6 6", fill: false }} />
@@ -76,7 +82,7 @@ export default function FleetMap({ fleet, facilities, exceptions, selected, onSe
           <Circle key={c.exception_id} center={[c.detail.lat as number, c.detail.lon as number]} radius={((c.detail.radius_km as number) ?? 5) * 1000}
             pathOptions={{ color: "#b91c1c", weight: 1.5, fillOpacity: 0.08 }}><Tooltip>{c.title}</Tooltip></Circle>
         ))}
-        {incidents.filter((i) => showMinor || i.severity !== "minor").map((i) => (
+        {incidents.filter((i) => i.severity === "severe" || (zoom >= 10 && i.severity === "lane") || (showMinor && zoom >= 11)).map((i) => (
           <CircleMarker key={`inc-${i.id}`} center={[i.lat, i.lon]} radius={i.severity === "severe" ? 7 : i.severity === "lane" ? 5 : 3}
             pathOptions={{ color: "#ffffff", weight: 1, fillColor: i.severity === "severe" ? "#b91c1c" : i.severity === "lane" ? "#d97706" : "#a16207", fillOpacity: 0.9 }}>
             <Tooltip direction="top" offset={[0, -6]}><b>{i.road} {i.direction ?? ""}</b> · {i.type === "accidentsAndIncidents" ? "incident" : "roadwork"}{i.full_closure ? " · FULL CLOSURE" : ""}<br />{i.description}<br /><span style={{ opacity: 0.7 }}>{i.lanes ?? ""} · {i.source}</span></Tooltip>
@@ -91,6 +97,7 @@ export default function FleetMap({ fleet, facilities, exceptions, selected, onSe
             <CircleMarker key={f.unit} center={[f.lat, f.lon]} radius={isSel ? 10 : 7}
               pathOptions={{ color: isSel ? "#111827" : "#ffffff", weight: isSel ? 3 : 2, fillColor: hosWarn ? "#b91c1c" : atDock ? "#b45309" : moving ? "#1d4ed8" : "#6b7280", fillOpacity: 1 }}
               eventHandlers={{ click: () => onSelect(isSel ? null : f.unit) }}>
+              {isSel && <Tooltip permanent direction="right" offset={[10, 0]} className="!bg-gray-900 !text-white !border-0 !px-1.5 !py-0.5 !text-[11px] !font-medium">{f.driver_name ?? f.unit} · {f.unit}</Tooltip>}
               <Tooltip direction="top" offset={[0, -8]}>
                 <b>{f.unit}</b> {f.driver_name} · {Math.round(f.speed_kmh)} km/h · {f.duty_status}
                 {f.hos && <><br />on-duty left {f.hos.remaining_onduty_h}h · drive {f.hos.remaining_drive_h}h · {f.hos.binding}</>}
@@ -102,7 +109,7 @@ export default function FleetMap({ fleet, facilities, exceptions, selected, onSe
       </MapContainer>
       <div className="absolute right-3 top-3 z-[1000] flex gap-2">
         <button onClick={() => setShowMinor((s) => !s)} className="btn btn-sm shadow-sm" title="Ontario 511 live events on 400-series highways in the region">
-          511 live · {incidents.filter((i) => i.severity !== "minor").length} {showMinor ? `(+${incidents.filter((i) => i.severity === "minor").length} minor)` : ""}
+          511 live · {incidents.filter((i) => i.severity === "severe").length} severe{zoom >= 10 ? ` · ${incidents.filter((i) => i.severity === "lane").length} lane` : ""}{showMinor ? " · minor" : ""}
         </button>
         <button onClick={() => setSatellite((s) => !s)} className="btn btn-sm shadow-sm">
           {satellite ? "Map view" : "Satellite view"}
