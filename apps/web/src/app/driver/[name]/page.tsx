@@ -16,9 +16,10 @@ export default function DriverApp({ params }: { params: Promise<{ name: string }
   const ev = (kind: string, payload?: Record<string, unknown>) => visit && act(() => api(`/visits/${visit.visit_id}/driver-event`, { method: "POST", body: JSON.stringify({ kind, actor: driver, payload }) }));
   const duty = (status: string) => act(() => api("/ingest/duty", { method: "POST", body: JSON.stringify({ driver_name: driver, ts: snap?.sim.sim_ts, status, source: "driver" }) }));
 
-  const Btn = ({ children, onClick, tone = "slate" }: { children: React.ReactNode; onClick: () => void; tone?: string }) => (
-    <button disabled={busy} onClick={onClick} className={`rounded-lg px-3 py-2.5 text-sm font-medium ring-1 ${tone === "cyan" ? "bg-blue-600 text-white ring-cyan-500" : tone === "green" ? "bg-green-700 text-white ring-green-600" : "bg-gray-100 text-gray-900 border-gray-300"} disabled:opacity-50`}>{children}</button>
+  const Btn = ({ children, onClick, primary = false }: { children: React.ReactNode; onClick: () => void; primary?: boolean }) => (
+    <button disabled={busy} onClick={onClick} className={`btn btn-lg w-full justify-center ${primary ? "btn-primary" : ""}`}>{children}</button>
   );
+  const nextStep = visit ? (!visit.timestamps.checked_in_ts ? "checked_in" : !visit.timestamps.service_complete_ts ? "service_complete" : !visit.timestamps.released_ts ? "released" : null) : null;
 
   return (
     <main className="mx-auto min-h-screen max-w-md bg-white px-5 pb-8 pt-4 text-gray-900">
@@ -58,15 +59,15 @@ export default function DriverApp({ params }: { params: Promise<{ name: string }
           {visit.on_time == null && (
             <div className="mb-3">
               <div className="label mb-1.5">How did you arrive?</div>
-              <div className="grid grid-cols-4 gap-2">{["early", "on_time", "late", "wrong_entrance"].map((c) => <button key={c} disabled={busy} onClick={() => ev("arrival_class", { value: c })} className="btn justify-center">{c.replace("_", " ")}</button>)}</div>
+              <div className="grid grid-cols-4 gap-2">{[["early", "Early"], ["on_time", "On time"], ["late", "Late"], ["wrong_entrance", "Wrong gate"]].map(([c, l]) => <button key={c} disabled={busy} onClick={() => ev("arrival_class", { value: c })} className="btn justify-center">{l}</button>)}</div>
             </div>
           )}
           <div className="grid grid-cols-2 gap-2">
-            {!visit.timestamps.checked_in_ts && <Btn tone="cyan" onClick={() => ev("checked_in", { at: "now" })}>Checked in now</Btn>}
+            {!visit.timestamps.checked_in_ts && <Btn primary={nextStep === "checked_in"} onClick={() => ev("checked_in", { at: "now" })}>Checked in now</Btn>}
             {!visit.timestamps.checked_in_ts && <Btn onClick={() => ev("checked_in", { at: "arrival" })}>Checked in at arrival, {hhmm(visit.timestamps.property_entered_ts)}</Btn>}
             {!visit.timestamps.at_dock_ts && <Btn onClick={() => ev("door_assigned")}>Door assigned</Btn>}
-            {!visit.timestamps.service_complete_ts && <Btn onClick={() => ev("service_complete")}>Loading done</Btn>}
-            {!visit.timestamps.released_ts && <Btn tone="green" onClick={() => ev("released")}>Released, leaving</Btn>}
+            {!visit.timestamps.service_complete_ts && <Btn primary={nextStep === "service_complete"} onClick={() => ev("service_complete")}>Loading done</Btn>}
+            {!visit.timestamps.released_ts && <Btn primary={nextStep === "released"} onClick={() => ev("released")}>Released, leaving</Btn>}
           </div>
         </section>
       )}
@@ -79,7 +80,7 @@ export default function DriverApp({ params }: { params: Promise<{ name: string }
               <div className="font-medium">{o.bill_number} · {cityCase(o.orig_city)} → {cityCase(o.dest_city)}</div>
               <div className="text-[11px] text-gray-500">{o.customer} · {o.load_type} · {o.weight_lbs ? `${Math.round(o.weight_lbs)} lb` : ""} · pickup by {hhmm(o.pickup_by_end)}</div>
               <div className="mt-2 grid grid-cols-2 gap-1.5">
-                <Btn tone="green" onClick={() => act(() => api(`/assignments/${o.assignment_id}/status`, { method: "POST", body: JSON.stringify({ status: "accepted", actor: driver }) }))}>Accept</Btn>
+                <Btn primary onClick={() => act(() => api(`/assignments/${o.assignment_id}/status`, { method: "POST", body: JSON.stringify({ status: "accepted", actor: driver }) }))}>Accept</Btn>
                 <Btn onClick={() => act(() => api(`/assignments/${o.assignment_id}/status`, { method: "POST", body: JSON.stringify({ status: "rejected", actor: driver }) }))}>Decline</Btn>
               </div>
             </div>

@@ -638,7 +638,7 @@ def refresh_exceptions():
             if late or infeasible:
                 why = nl.get("verdict") if infeasible else "would miss the pickup window"
                 upsert_exception("next_load_at_risk", "critical" if infeasible else "warn", unit, drv, vid, nxt["bill_number"],
-                                 f"{drv}: next load {nxt['bill_number']} ({nxt['orig_city']} -> {nxt['dest_city']}) pickup by {(nxt.get('pickup_by_end') or '')[11:16]} — {why}",
+                                 f"{drv}: next load {nxt['bill_number']} ({(nxt['orig_city'] or '').title()} → {(nxt['dest_city'] or '').title()}) pickup by {(nxt.get('pickup_by_end') or '')[11:16]} — {why}",
                                  {"next": nxt, "feasibility": nl, "late": late}, ["find a relief driver (rescue)", "request revised appointment"])
     # resolve next-load exceptions whose load is no longer on that driver
     for e in rows("SELECT exception_id, driver_name, bill_number FROM exceptions WHERE status='open' AND kind='next_load_at_risk'"):
@@ -660,7 +660,7 @@ def refresh_exceptions():
         title = f"[511 live] {inc['road']} {inc['direction'] or ''}: {inc['description'][:100]} — {d:.0f} km from {', '.join(near[:3])}"
         upsert_exception("closure", "warn" if d <= 5 else "info", near[0], None, None, None, title,
                          {"id": str(inc["id"]), "lat": inc["lat"], "lon": inc["lon"], "radius_km": 8, "source": inc["source"], "lanes": inc["lanes"], "full_closure": inc["full_closure"], "near_units": near},
-                         ["re-estimate ETAs for trucks in the corridor", "s.76 adverse conditions: possible 2 h extension — eligibility not assumed, review required"])
+                         ["re-estimate ETAs in the corridor", "s.76 adverse-conditions extension: review, not assumed"])
     keep = {str(inc["id"]) for _, inc, _ in sorted(scored, key=lambda x: x[0])[:3]}
     for e in rows("SELECT exception_id, json_extract(detail_json,'$.id') i, json_extract(detail_json,'$.source') src FROM exceptions WHERE status='open' AND kind='closure'"):
         if e["src"] and "511" in str(e["src"]) and e["i"] and e["i"] not in keep:

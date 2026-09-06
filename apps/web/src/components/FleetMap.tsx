@@ -113,11 +113,11 @@ export default function FleetMap({ fleet, facilities, exceptions, selected, onSe
         <span className="mr-3"><i className="inline-block h-2.5 w-2.5 rounded-full bg-blue-700" /> moving</span>
         <span className="mr-3"><i className="inline-block h-2.5 w-2.5 rounded-full bg-gray-500" /> stopped</span>
         <span className="mr-3"><i className="inline-block h-2.5 w-2.5 rounded-full bg-amber-700" /> at a facility</span>
-        <span className="mr-3"><i className="inline-block h-2.5 w-2.5 rounded-full bg-red-700" /> under 1.5 h on-duty left</span>
+        <span className="mr-3"><i className="inline-block h-2.5 w-2.5 rounded-full bg-red-700" /> &lt; 1.5 h on-duty</span>
         <span className="mr-3"><i className="inline-block h-2.5 w-4 border border-gray-900" /> property</span>
         <span className="mr-3"><i className="inline-block h-2.5 w-4 border border-amber-700" /> dock</span>
-        <span className="mr-3"><i className="inline-block h-2.5 w-4 border border-dashed border-gray-400" /> centroid, simulation only</span>
-        <span><i className="inline-block h-2 w-2 rounded-full bg-amber-600" /> 511 lane closure · <i className="inline-block h-2.5 w-2.5 rounded-full bg-red-700" /> incident / full closure</span>
+        <span className="mr-3"><i className="inline-block h-2.5 w-4 border border-dashed border-gray-400" /> centroid (sim)</span>
+        <span><i className="inline-block h-2 w-2 rounded-full bg-amber-600" /> 511 lane closure · <i className="inline-block h-2.5 w-2.5 rounded-full bg-red-700" /> 511 incident</span>
         {sel && <div className="num mt-1 text-gray-900">{sel.unit}: {crumbs.length} pings · odometer {sel.odometer_km ?? 0} km</div>}
       </div>
     </div>
