@@ -236,9 +236,11 @@ class VisitEngine:
         if closed and at_risk:
             have = {"geofence_entry": bool(entered), "geofence_exit": bool(exited), "driver_checkin": bool(checked), "appointment": bool(appt),
                     "driver_release": bool(released), "on_time": visit["on_time"] is not None}
+            names = {"geofence_entry": "geofence entry", "geofence_exit": "geofence exit", "driver_checkin": "driver check-in", "appointment": "appointment on record",
+                     "driver_release": "driver release confirmation", "on_time": "on-time confirmation"}
             for req in json.loads(pol.get("required_evidence") or "[]"):
                 if not have.get(req, True):
-                    reasons.append(f"required evidence missing: {req}")
+                    reasons.append(f"required evidence missing: {names.get(req, req.replace('_', ' '))}")
         if rule == "dock_in" and not dock and at_risk:
             reasons.append("policy clocks from dock-in but no dock-in evidence; used check-in/entry")
         if rule == "appointment" and appt and entered and entered > appt:

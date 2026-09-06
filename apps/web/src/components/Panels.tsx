@@ -100,11 +100,11 @@ export function RescuePanel({ bill, excludeDriver, onClose }: { bill: string; ex
               <li key={c.driver_name} className={`flex items-center justify-between gap-3 rule-b py-2.5 pl-3 text-sm ${c.eligible ? "bar-ok" : "bar-none opacity-70"}`}>
                 <div>
                   <div className="font-medium text-gray-900">{c.driver_name} <span className="font-normal text-gray-500">· {c.unit}</span> <span className="num ml-2 text-xs text-gray-500">{c.deadhead_km} km · ETA {hhmm(c.eta)} · HOS margin {fmtH(c.hos_margin_h)}</span></div>
-                  <div className="text-xs text-gray-500">{c.reasons.join(" · ")}</div>
+                  <div className="text-xs text-gray-500">{c.reasons.filter((r) => !/^deadhead/.test(r)).map((r) => r.replace("trailer unknown ok", "trailer not on file")).join(" · ")}</div>
                   {c.blockers.length > 0 && <div className="text-xs t-bad">{c.blockers.join(" · ")}</div>}
                 </div>
                 {c.eligible && (done === c.driver_name ? <span className="text-xs t-ok">Offered — waiting for the driver</span> :
-                  <button disabled={pending || !!done} onClick={() => assign(c)} className="btn btn-sm btn-primary">{done ? "Offered elsewhere" : "Offer load"}</button>)}
+                  <button disabled={pending || !!done} onClick={() => assign(c)} className="btn btn-sm btn-primary whitespace-nowrap">{done ? "Offered elsewhere" : "Offer load"}</button>)}
               </li>
             ))}
           </ul>

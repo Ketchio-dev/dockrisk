@@ -37,6 +37,22 @@ converging** (billing clock vs hours-of-service), and the action is a reassignme
 - **Driver app**: the facility block comes first when the driver is at one; a single filled button is the
   next expected action.
 
+## Secondary surfaces (same night, third pass)
+
+- **Evidence packet** reads as an invoice-style document: the amount first (40 px), a three-line
+  calculation table (physical dwell, qualifying dwell, free time — each with its rule in words), a
+  "Needs review before billing" block with a left bar, a time-only timeline, a ledger with human event
+  names and "Reported by" (GPS geofence / Driver app / Engine), then GPS and duty samples. Dates appear
+  once, in the header. The engine's evidence keys are humanized ("driver check-in", not `driver_checkin`).
+- **Data** is a report, not a rules dump: one headline, assumption chips with sliders behind *Adjust*, a
+  two-row shape table, one line on what the file is, findings grouped by consequence.
+- **Drivers index** is a list of rows in ink (names are not links in colour; the whole row is the link).
+- **Rescue modal** ranks candidates with the numbers in the headline and the reasons underneath; blockers
+  in red text; one *Offer load* button per eligible row; nothing wraps.
+- **Map**: closure rings are thin, dashed, and capped at 2.5 km; trucks get a permanent label when selected.
+- **Board** opens the top row only when it needs attention (a visit, or a warn/bad status); a quiet fleet
+  shows compact rows only.
+
 ## Tokens (`apps/web/src/app/globals.css`)
 
 | Token | Value | Use |

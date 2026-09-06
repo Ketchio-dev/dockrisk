@@ -51,7 +51,8 @@ export function Board({ fleet, visits, exceptions, assignments, charges, selecte
     const c = classify(f, v);
     return { unit: f.unit, driver: f.driver_name, fleet: f, visit: v, urgency: c.urgency, status: { word: c.word, tone: c.tone } };
   }).sort((a, b) => a.urgency - b.urgency);
-  const openUnit = selected ?? rows[0]?.unit ?? null;
+  const top = rows[0];
+  const openUnit = selected ?? (top && (top.visit || top.status.tone === "bad" || top.status.tone === "warn") ? top.unit : null);
 
   return (
     <section>

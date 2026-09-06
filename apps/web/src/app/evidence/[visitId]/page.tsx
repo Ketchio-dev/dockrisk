@@ -1,6 +1,6 @@
 "use client";
 import { use, useEffect, useState } from "react";
-import { api } from "@/lib/api";
+import { api, fmtMin } from "@/lib/api";
 
 type Packet = {
   visit: Record<string, string | number | null>; facility: Record<string, string | number | null>;
@@ -10,59 +10,96 @@ type Packet = {
   duty_timeline: { ts: string; status: string; source: string }[]; limits: string[];
 };
 
+const STATE: Record<string, string> = { FACILITY_APPROACH: "Approaching", PROPERTY_ENTERED: "Entered property", CHECKED_IN: "Checked in", AT_DOCK: "At dock",
+  SERVICE_COMPLETE: "Loading done", RELEASED: "Released", GATE_EXITED: "Left property", CHARGE_READY: "Charge ready", REVIEW_REQUIRED: "Needs review" };
+const SOURCE: Record<string, string> = { gps: "GPS geofence", driver: "Driver app", dispatcher: "Dispatcher", system: "Engine", sim: "Simulator", tms: "TMS" };
+const RULE: Record<string, string> = { max_checkin_appointment: "the later of check-in and appointment", arrival: "arrival", appointment: "the appointment time", dock_in: "dock assignment" };
+const t = (ts: string | number | null | undefined) => (ts ? String(ts).slice(11, 16) : "—");
+
 export default function Evidence({ params }: { params: Promise<{ visitId: string }> }) {
   const { visitId } = use(params);
   const [p, setP] = useState<Packet | null>(null);
   const [err, setErr] = useState<string | null>(null);
   useEffect(() => { api<Packet>(`/visits/${visitId}/evidence`).then(setP).catch((e) => setErr(String(e))); }, [visitId]);
-  if (err) return <main className="p-6 text-gray-700">No evidence packet for visit #{visitId}: {err} <a href="/" className="text-blue-700">← dispatcher</a></main>;
-  if (!p) return <main className="p-6 text-gray-700">Loading…</main>;
+  if (err) return <main className="p-8 text-gray-700">No packet for visit #{visitId}. <a href="/">← Dispatch</a></main>;
+  if (!p) return <main className="p-8 text-gray-500">Loading…</main>;
   const c = p.calculation; const v = p.visit;
+  const day = String(v.property_entered_ts ?? v.approach_ts ?? "").slice(0, 10);
+  const stops: [string, string][] = [["Appointment", "appointment_start_ts"], ["Entered property", "property_entered_ts"], ["Checked in", "checked_in_ts"], ["At dock", "at_dock_ts"], ["Loading done", "service_complete_ts"], ["Released", "released_ts"], ["Left property", "gate_exited_ts"]];
   return (
-    <main className="mx-auto max-w-3xl bg-white p-8 text-gray-900 print:p-0">
-      <style>{`@media print { a, button { display: none } body { background: white } }`}</style>
-      <header className="mb-4 flex items-baseline justify-between border-b border-slate-300 pb-2">
-        <div><h1 className="text-xl font-semibold">Detention claim — draft</h1><div className="text-sm text-slate-600">Visit #{v.visit_id} · bill {v.bill_number ?? "—"} · {String(v.stop_kind)} at {String(p.facility.name)}</div></div>
-        <div className="text-right text-sm"><a href="/" className="text-cyan-700">← dispatcher</a><br /><button onClick={() => window.print()} className="mt-1 rounded bg-gray-100 px-2 py-1 text-xs text-white">Print / PDF</button></div>
+    <main className="mx-auto max-w-2xl bg-white px-8 py-8 text-gray-900 print:px-0 print:py-0">
+      <style>{`@media print { .no-print { display: none } body { background: white } }`}</style>
+      <header className="rule-b mb-6 flex items-start justify-between pb-4">
+        <div>
+          <div className="label">Detention claim · draft · {day}</div>
+          <h1 className="mt-0.5 text-xl font-semibold">{String(p.facility.name)}</h1>
+          <div className="text-sm text-gray-500">{String(v.stop_kind)} · bill <span className="num">{v.bill_number ?? "—"}</span> · {v.driver_name} · {v.unit} · visit #{v.visit_id}</div>
+        </div>
+        <div className="no-print flex items-center gap-2"><a href="/" className="btn btn-sm">Dispatch</a><button onClick={() => window.print()} className="btn btn-sm btn-primary">Print / PDF</button></div>
       </header>
+
       {c && (
-        <section className="mb-4 grid grid-cols-4 gap-2 text-center">
-          {[["Physical dwell", `${c.physical_dwell_min} min`], ["Qualifying dwell", `${c.qualifying_dwell_min} min`], ["Billable", `${c.billable_min} min (raw ${c.billable_raw_min})`], ["Amount", `$${c.amount.toFixed(2)}`]].map(([l, x]) => (
-            <div key={l} className="rounded border border-slate-300 p-2"><div className="text-[10px] uppercase text-gray-500">{l}</div><div className="font-semibold">{x}</div></div>
-          ))}
+        <section className="mb-6">
+          <div className="flex items-baseline gap-4">
+            <div className="num text-[40px] font-semibold leading-none">${c.amount.toFixed(2)}</div>
+            <div className="text-sm text-gray-600">{c.billable_min} billable minutes{c.billable_raw_min !== c.billable_min ? ` (${c.billable_raw_min} before rounding)` : ""} at ${c.policy.rate_per_hour}/h</div>
+          </div>
+          <table className="mt-4 w-full text-sm">
+            <tbody>
+              <tr className="rule-b"><td className="whitespace-nowrap py-1.5 pr-3 text-gray-500">Physical dwell</td><td className="num whitespace-nowrap py-1.5 text-right">{fmtMin(c.physical_dwell_min)}</td><td className="py-1.5 pl-4 text-gray-500">{t(v.property_entered_ts)} → {t(v.gate_exited_ts)}</td></tr>
+              <tr className="rule-b"><td className="whitespace-nowrap py-1.5 pr-3 text-gray-500">Qualifying dwell</td><td className="num whitespace-nowrap py-1.5 text-right">{fmtMin(c.qualifying_dwell_min)}</td><td className="py-1.5 pl-4 text-gray-500">clock from {RULE[String(c.policy.billing_start_rule)] ?? c.policy.billing_start_rule} ({t(c.clock_start_ts)}) to {c.policy.billing_end_rule === "gate_exit" ? "leaving the property" : "release"} ({t(c.clock_end_ts)})</td></tr>
+              <tr className="rule-b"><td className="whitespace-nowrap py-1.5 pr-3 text-gray-500">Free time</td><td className="num whitespace-nowrap py-1.5 text-right">{fmtMin(Number(c.policy.free_time_min))}</td><td className="py-1.5 pl-4 text-gray-500">{c.policy.increment_min}-min increments, rounded {String(c.policy.rounding ?? "down")}{c.policy.requires_on_time_arrival ? " · on-time arrival required" : ""} · policy: {String(c.policy.source)}</td></tr>
+            </tbody>
+          </table>
+          {c.review_required && (
+            <div className="bar-warn mt-4 pl-3 text-sm">
+              <div className="font-medium t-warn">Needs review before billing</div>
+              <ul className="mt-0.5 list-disc pl-4 text-gray-700">{c.review_reasons.map((r, i) => <li key={i}>{r}</li>)}</ul>
+            </div>
+          )}
+          <p className="mt-3 text-xs text-gray-500">Evidence confidence {c.confidence} · facility outline: {String(p.facility.source)}{Number(p.facility.confidence) < 0.9 ? " (not surveyed)" : ""}</p>
         </section>
       )}
-      {c && (
-        <section className="mb-4 text-sm">
-          <h2 className="mb-1 font-semibold">Policy applied</h2>
-          <p>Free time {c.policy.free_time_min} min · ${c.policy.rate_per_hour}/h · {c.policy.increment_min}-min increments ({c.policy.rounding}) · clock from <b>{String(c.policy.billing_start_rule).replace(/_/g, " ")}</b> ({c.clock_start_ts}) to <b>{String(c.policy.billing_end_rule)}</b> ({c.clock_end_ts}) · on-time required: {c.policy.requires_on_time_arrival ? "yes" : "no"} · source: {c.policy.source}</p>
-          {c.review_required && <p className="mt-1 rounded bg-amber-50 p-2 text-amber-900"><b>Review required:</b> {c.review_reasons.join(" · ")}</p>}
-          <p className="mt-1 text-slate-600">Confidence {c.confidence} — facility geometry: {String(p.facility.source)} ({String(p.facility.confidence)})</p>
-        </section>
-      )}
-      <section className="mb-4 text-sm">
-        <h2 className="mb-1 font-semibold">Timestamps</h2>
-        <table className="w-full text-[12px]"><tbody>
-          {["appointment_start_ts", "property_entered_ts", "checked_in_ts", "at_dock_ts", "service_complete_ts", "released_ts", "gate_exited_ts"].map((k) => (
-            <tr key={k} className="border-t border-slate-200"><td className="py-0.5 text-slate-600">{k.replace(/_ts$/, "").replace(/_/g, " ")}</td><td className="text-right tabular-nums">{v[k] ?? "—"}</td></tr>
-          ))}
-          <tr className="border-t border-slate-200"><td className="py-0.5 text-slate-600">driver arrival classification</td><td className="text-right">{v.on_time === 1 ? "on time / early" : v.on_time === 0 ? "late / wrong entrance" : "not confirmed"}</td></tr>
-        </tbody></table>
+
+      <section className="mb-6">
+        <h2 className="mb-1 text-sm font-semibold">Timeline</h2>
+        <table className="w-full text-sm">
+          <tbody>
+            {stops.map(([label, k]) => (
+              <tr key={k} className="rule-b"><td className="py-1 text-gray-600">{label}</td><td className="num py-1 text-right">{t(v[k])}</td></tr>
+            ))}
+            <tr className="rule-b"><td className="py-1 text-gray-600">Driver&apos;s arrival</td><td className="py-1 text-right">{v.on_time === 1 ? "on time or early" : v.on_time === 0 ? "late or wrong gate" : "not confirmed"}</td></tr>
+          </tbody>
+        </table>
       </section>
-      <section className="mb-4 text-sm">
-        <h2 className="mb-1 font-semibold">Event ledger <span className="font-normal text-gray-500">· every transition with its source</span></h2>
-        <table className="w-full text-[11px]"><thead className="text-gray-500"><tr><th className="text-left font-normal">Event time</th><th className="text-left font-normal">Received</th><th className="text-left font-normal">Transition</th><th className="text-left font-normal">Source</th><th className="text-left font-normal">Note</th></tr></thead>
+
+      <section className="mb-6">
+        <div className="mb-1 flex items-baseline justify-between"><h2 className="text-sm font-semibold">Ledger</h2><span className="label">every transition, who reported it, and when it was received</span></div>
+        <table className="w-full text-xs">
+          <thead className="label"><tr className="rule-b"><th className="py-1 text-left font-normal">At</th><th className="py-1 text-left font-normal">Event</th><th className="py-1 text-left font-normal">Reported by</th><th className="py-1 text-left font-normal">Note</th></tr></thead>
           <tbody>{p.events.map((e, i) => (
-            <tr key={i} className={`border-t border-slate-200 ${e.superseded_by ? "text-gray-500 line-through" : ""}`}><td className="py-0.5 tabular-nums">{e.ts}</td><td className="tabular-nums">{e.received_ts}</td><td>{e.state_from ?? "—"} → {e.state_to}</td><td>{e.source}{e.actor ? ` (${e.actor})` : ""}{e.confidence != null ? ` · ${e.confidence}` : ""}</td><td>{e.note}</td></tr>
-          ))}</tbody></table>
+            <tr key={i} className={`rule-b align-top ${e.superseded_by ? "text-gray-400 line-through" : ""}`}>
+              <td className="num py-1 pr-2 whitespace-nowrap">{t(e.ts)}{e.received_ts && e.received_ts.slice(11, 16) !== e.ts.slice(11, 16) ? <span className="text-gray-400"> (recv {t(e.received_ts)})</span> : null}</td>
+              <td className="py-1 pr-2">{STATE[e.state_to] ?? e.state_to}</td>
+              <td className="py-1 pr-2 text-gray-600">{SOURCE[e.source] ?? e.source}{e.actor ? ` · ${e.actor}` : ""}</td>
+              <td className="py-1 text-gray-600">{e.note}</td>
+            </tr>
+          ))}</tbody>
+        </table>
       </section>
-      <section className="mb-4 grid grid-cols-2 gap-4 text-sm">
-        <div><h2 className="mb-1 font-semibold">GPS trace <span className="font-normal text-gray-500">· {p.breadcrumb_points} pings, sampled</span></h2>
-          <table className="w-full text-[11px]"><tbody>{p.breadcrumb_sample.map((b, i) => <tr key={i} className="border-t border-slate-200"><td className="py-0.5 tabular-nums">{b.sim_ts.slice(11, 16)}</td><td className="tabular-nums">{b.lat.toFixed(5)}, {b.lon.toFixed(5)}</td><td className="text-right">{Math.round(b.speed_kmh)} km/h</td><td className="text-right text-gray-500">{b.duty_status}</td></tr>)}</tbody></table></div>
-        <div><h2 className="mb-1 font-semibold">Duty status during the visit</h2>
-          <table className="w-full text-[11px]"><tbody>{p.duty_timeline.map((d, i) => <tr key={i} className="border-t border-slate-200"><td className="py-0.5 tabular-nums">{d.ts.slice(11, 16)}</td><td>{d.status}</td><td className="text-right text-gray-500">{d.source}</td></tr>)}</tbody></table></div>
+
+      <section className="mb-6 grid grid-cols-2 gap-6 text-xs">
+        <div>
+          <div className="mb-1 flex items-baseline justify-between"><h2 className="text-sm font-semibold">GPS</h2><span className="label">{p.breadcrumb_points} pings, sampled</span></div>
+          <table className="w-full"><tbody>{p.breadcrumb_sample.slice(0, 12).map((b, i) => <tr key={i} className="rule-b"><td className="num py-0.5">{b.sim_ts.slice(11, 16)}</td><td className="num py-0.5 text-gray-600">{b.lat.toFixed(5)}, {b.lon.toFixed(5)}</td><td className="num py-0.5 text-right">{Math.round(b.speed_kmh)} km/h</td></tr>)}</tbody></table>
+        </div>
+        <div>
+          <h2 className="mb-1 text-sm font-semibold">Duty status</h2>
+          <table className="w-full"><tbody>{p.duty_timeline.map((d, i) => <tr key={i} className="rule-b"><td className="num py-0.5">{d.ts.slice(11, 16)}</td><td className="py-0.5">{d.status.replace("_", " ")}</td><td className="py-0.5 text-right text-gray-500">{SOURCE[d.source] ?? d.source}</td></tr>)}</tbody></table>
+        </div>
       </section>
-      <footer className="border-t border-slate-300 pt-2 text-[11px] text-gray-500">Limits: {p.limits.join(" · ")}. Prepared by DockRisk (prototype). Dispatcher approval and customer terms govern; this packet supports, not replaces, the invoice.</footer>
+
+      <footer className="rule-t pt-3 text-xs text-gray-500">{p.limits.join(" · ")}. Prepared by DockRisk, a prototype. Dispatcher approval and the customer&apos;s terms govern; this packet supports the invoice, it is not the invoice.</footer>
     </main>
   );
 }

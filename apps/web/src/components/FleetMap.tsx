@@ -79,8 +79,8 @@ export default function FleetMap({ fleet, facilities, exceptions, selected, onSe
           );
         })}
         {closures.map((c) => (
-          <Circle key={c.exception_id} center={[c.detail.lat as number, c.detail.lon as number]} radius={((c.detail.radius_km as number) ?? 5) * 1000}
-            pathOptions={{ color: "#b91c1c", weight: 1.5, fillOpacity: 0.08 }}><Tooltip>{c.title}</Tooltip></Circle>
+          <Circle key={c.exception_id} center={[c.detail.lat as number, c.detail.lon as number]} radius={Math.min(((c.detail.radius_km as number) ?? 5), 2.5) * 1000}
+            pathOptions={{ color: "#b91c1c", weight: 1, dashArray: "4 4", fill: false }}><Tooltip>{c.title}</Tooltip></Circle>
         ))}
         {incidents.filter((i) => i.severity === "severe" || (zoom >= 10 && i.severity === "lane") || (showMinor && zoom >= 11)).map((i) => (
           <CircleMarker key={`inc-${i.id}`} center={[i.lat, i.lon]} radius={i.severity === "severe" ? 7 : i.severity === "lane" ? 5 : 3}

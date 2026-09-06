@@ -57,7 +57,7 @@ export default function Policies() {
         <section className="space-y-2">
           <label className="block text-[11px] text-gray-500">Customer<input value={customer} onChange={(e) => setCustomer(e.target.value)} className="mt-0.5 w-full rounded bg-white px-2 py-1 text-sm border border-gray-300" /></label>
           <label className="block text-[11px] text-gray-500">Rate confirmation / agreement text
-            <textarea value={text} onChange={(e) => setText(e.target.value)} rows={12} className="mt-0.5 w-full rounded bg-white p-2 font-mono text-[12px] text-gray-800 border border-gray-300" /></label>
+            <textarea value={text} onChange={(e) => setText(e.target.value)} rows={12} className="mt-0.5 w-full rounded bg-white p-3 text-sm leading-relaxed text-gray-800 border border-gray-300" /></label>
           <button disabled={busy} onClick={extract} className="btn btn-primary">{busy ? "Extracting…" : "Extract terms"}</button>
         </section>
         <section className="space-y-2">

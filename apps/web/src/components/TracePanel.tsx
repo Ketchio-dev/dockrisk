@@ -56,7 +56,7 @@ export default function TracePanel({ unit }: { unit: string }) {
         <table className="mt-2 w-full text-xs">
           <thead className="label"><tr><th className="text-left font-normal">Stop</th><th className="text-right font-normal">In</th><th className="text-right font-normal">Out</th><th className="text-right font-normal">Dwell</th><th className="text-right font-normal">Billable</th></tr></thead>
           <tbody>{t.stops.map((s) => (
-            <tr key={s.visit_id} className="border-t border-gray-200"><td className="py-1">{s.facility} <span className="text-gray-500">· {s.stop_kind} · {s.state.replace(/_/g, " ")}</span></td>
+            <tr key={s.visit_id} className="border-t border-gray-200"><td className="py-1">{s.facility} <span className="text-gray-500">· {s.stop_kind} · {({ CHARGE_READY: "charge ready", REVIEW_REQUIRED: "needs review", GATE_EXITED: "left", RELEASED: "released", AT_DOCK: "at dock", CHECKED_IN: "checked in", PROPERTY_ENTERED: "entered" } as Record<string, string>)[s.state] ?? s.state.toLowerCase()}</span></td>
               <td className="text-right tabular-nums">{hhmm(s.property_entered_ts)}</td><td className="text-right tabular-nums">{hhmm(s.gate_exited_ts)}</td>
               <td className="text-right tabular-nums">{fmtMin(s.physical_dwell_min)}</td><td className="text-right tabular-nums">{s.billable_min != null ? `${s.billable_min}m` : "—"}</td></tr>
           ))}</tbody>
