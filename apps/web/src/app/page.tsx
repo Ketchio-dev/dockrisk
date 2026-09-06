@@ -3,6 +3,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { API, api, type Exposure, type Facility, type Snapshot } from "@/lib/api";
 import { ChargesList, ExceptionInbox, RescuePanel, VisitCard } from "@/components/Panels";
+import TracePanel from "@/components/TracePanel";
 
 const FleetMap = dynamic(() => import("@/components/FleetMap"), { ssr: false });
 
@@ -45,6 +46,7 @@ export default function Dispatcher() {
           <span className="rounded bg-slate-900 px-2 py-1 font-mono text-slate-300 ring-1 ring-slate-700">
             sim {snap?.sim?.sim_ts?.slice(0, 16) ?? "—"} {snap?.sim?.running ? `×${snap.sim.speed}` : "· paused"}
           </span>
+          <a href="/policies" className="text-cyan-400 hover:underline">policies</a>
           <a href="/driver" className="text-cyan-400 hover:underline">driver app ↗</a>
         </div>
       </header>
@@ -61,6 +63,7 @@ export default function Dispatcher() {
               {snap && snap.visits.length === 0 && <p className="text-sm text-slate-500">No truck is inside a facility right now.</p>}
             </div>
           </section>
+          {selected && <TracePanel unit={selected} />}
           <ChargesList charges={snap?.charges ?? []} />
         </aside>
       </div>

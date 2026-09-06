@@ -212,6 +212,44 @@ def add_policy(p: PolicyIn):
     return row("SELECT * FROM detention_policies ORDER BY policy_id DESC LIMIT 1")
 
 
+class ExtractIn(BaseModel):
+    text: str
+    customer: str | None = None
+    prefer_llm: bool = True
+
+
+@app.post("/policies/extract")
+def policies_extract(x: ExtractIn):
+    """Draft detention terms from pasted rate-confirmation text. Nothing is activated until /policies/confirm."""
+    from core.policy_extract import extract_terms
+    ex = extract_terms(x.text, x.prefer_llm)
+    return {"customer": x.customer, "source": ex.source, "model": ex.model, "warning": ex.warning, "terms": ex.terms.model_dump(), "source_text": x.text}
+
+
+class ConfirmIn(BaseModel):
+    customer: str | None = None
+    facility_id: int | None = None
+    terms: dict
+    source: str            # extracted-llm | extracted-rules | manual
+    source_text: str | None = None
+    confirmed_by: str
+
+
+@app.post("/policies/confirm")
+def policies_confirm(c: ConfirmIn):
+    t = c.terms
+    scope = "facility" if c.facility_id else "customer" if c.customer else "default"
+    S.conn.execute("""INSERT INTO detention_policies (scope, customer, facility_id, free_time_min, rate_per_hour, increment_min, minimum_charge, maximum_charge,
+                      billing_start_rule, requires_on_time_arrival, on_time_grace_min, required_evidence, source, source_text, confirmed_by, created_ts)
+                      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                   (scope, c.customer, c.facility_id, int(t.get("free_time_min") or 120), float(t.get("rate_per_hour") or 75), int(t.get("increment_min") or 15),
+                    float(t.get("minimum_charge") or 0), t.get("maximum_charge"), t.get("billing_start_rule") or "max_checkin_appointment",
+                    int(bool(t.get("requires_on_time_arrival", True))), 15, json.dumps(t.get("required_evidence") or []),
+                    "confirmed", c.source_text, f"{c.confirmed_by} (from {c.source})", now_sim().isoformat(sep=" ")))
+    S.conn.commit()
+    return row("SELECT * FROM detention_policies ORDER BY policy_id DESC LIMIT 1")
+
+
 @app.get("/exposure")
 def exposure(free_min: int = 120, rate_low: float = 75, rate_high: float = 100, region_only: int = 1, cap_min: int = 2880):
     return exposure_summary(S.conn, free_min, rate_low, rate_high, bool(region_only), cap_min)
@@ -709,6 +747,42 @@ def snapshot():
                         "provenance": duty_provenance(f["driver_name"])["history"], "cycle_note": cycle_note(d.get("cycle"))}
     return {"sim": get_clock(), "fleet": fleet, "visits": visits(1), "exceptions": exceptions("open"),
             "charges": charges()[:20], "assignments": list_assignments(None, 1)[:50]}
+
+
+@app.get("/trace/{unit}")
+def trace(unit: str, since: str | None = None, points: int = 120):
+    """Track & trace for one unit: distance and time from telemetry, speed series (downsampled), stops timeline."""
+    pings = rows("SELECT sim_ts, lat, lon, speed_kmh, odometer_km, duty_status FROM telemetry WHERE unit=? AND sim_ts >= ? ORDER BY sim_ts", unit, since or "0000")
+    if not pings:
+        raise HTTPException(404, "no telemetry for unit")
+    moving = [p for p in pings if (p["speed_kmh"] or 0) > 3]
+    t0, t1 = datetime.fromisoformat(pings[0]["sim_ts"]), datetime.fromisoformat(pings[-1]["sim_ts"])
+    span_h = max(0.0, (t1 - t0).total_seconds() / 3600)
+    # time buckets from consecutive pings
+    move_h = stop_h = 0.0
+    for a, b in zip(pings, pings[1:]):
+        dt = (datetime.fromisoformat(b["sim_ts"]) - datetime.fromisoformat(a["sim_ts"])).total_seconds() / 3600
+        if (a["speed_kmh"] or 0) > 3:
+            move_h += dt
+        else:
+            stop_h += dt
+    odo0 = next((p["odometer_km"] for p in pings if p["odometer_km"] is not None), None)
+    odo1 = next((p["odometer_km"] for p in reversed(pings) if p["odometer_km"] is not None), None)
+    dist = round((odo1 - odo0), 1) if odo0 is not None and odo1 is not None else None
+    step = max(1, len(pings) // points)
+    series = [{"t": p["sim_ts"][11:16], "kmh": round(p["speed_kmh"] or 0), "duty": p["duty_status"]} for p in pings[::step]]
+    visits = rows("""SELECT v.visit_id, f.name facility, v.stop_kind, v.state, v.property_entered_ts, v.gate_exited_ts, v.physical_dwell_min, v.billable_min
+                     FROM stop_visits v JOIN facilities f ON f.facility_id=v.facility_id WHERE v.unit=? ORDER BY v.approach_ts""", unit)
+    for v in visits:
+        if v["physical_dwell_min"] is None and v["property_entered_ts"]:
+            v["physical_dwell_min"] = round((now_sim() - datetime.fromisoformat(v["property_entered_ts"])).total_seconds() / 60, 1)
+    return {"unit": unit, "driver_name": pings[-1].get("driver_name") if "driver_name" in pings[-1].keys() else None,
+            "window": [pings[0]["sim_ts"], pings[-1]["sim_ts"]], "span_h": round(span_h, 2),
+            "distance_km": dist, "moving_h": round(move_h, 2), "stopped_h": round(stop_h, 2),
+            "avg_moving_kmh": round(sum(p["speed_kmh"] for p in moving) / len(moving), 1) if moving else 0,
+            "max_kmh": round(max((p["speed_kmh"] or 0) for p in pings), 1), "pings": len(pings),
+            "speed_series": series, "stops": visits,
+            "source": "simulated telemetry" if all(True for _ in [0]) else "telemetry"}
 
 
 @app.get("/breadcrumbs/{unit}")

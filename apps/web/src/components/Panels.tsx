@@ -102,7 +102,7 @@ export function ChargesList({ charges }: { charges: Charge[] }) {
         <tbody>
           {charges.map((c) => (
             <tr key={c.charge_id} className="border-t border-slate-800">
-              <td className="py-1"><button className="hover:underline" onClick={() => show(c.visit_id)}>{c.facility_name}</button><div className="text-[10px] text-slate-500">{c.party} · conf {c.confidence}{c.review_required ? ` · review: ${c.reason_codes[0]}` : ""}</div></td>
+              <td className="py-1"><button className="hover:underline" onClick={() => show(c.visit_id)}>{c.facility_name}</button> <a href={`/evidence/${c.visit_id}`} target="_blank" className="text-cyan-400 hover:underline">packet ↗</a><div className="text-[10px] text-slate-500">{c.party} · conf {c.confidence}{c.review_required ? ` · review: ${c.reason_codes[0]}` : ""}</div></td>
               <td className="text-right tabular-nums">{fmtMin(c.qualifying_dwell_min)}</td>
               <td className="text-right tabular-nums">{c.billable_min}m</td>
               <td className="text-right tabular-nums">${c.amount.toFixed(2)}</td>

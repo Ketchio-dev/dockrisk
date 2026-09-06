@@ -121,7 +121,8 @@ class Sim:
         run short city legs between centroid facilities."""
         fac = {f["name"]: f for f in self.get("/facilities")}
         by_city = {}
-        for f in fac.values():
+        rank = {"demo": 0, "hand": 0, "osm": 1, "centroid": 9}
+        for f in sorted(fac.values(), key=lambda x: rank.get(x["source"], 5)):   # real geometry first, centroids last
             by_city.setdefault(f["city"], f)
         milton, london = fac["Milton DC (demo geometry)"], fac["London DC (demo geometry)"]
         drivers = self.get("/drivers")
