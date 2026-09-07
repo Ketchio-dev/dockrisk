@@ -15,7 +15,8 @@ and writes language. The engine computes every number, and the dispatcher confir
 - `scripts/demo.sh 60` on the presentation laptop; open **two browser tabs**: `/` (dispatcher) and
   `/driver/Driver8` (the relief driver). A third tab `/driver/Driver84` (the hero) if a second screen exists.
 - Satellite cache warmed: `python3 scripts/prefetch_tiles.py` the night before.
-- Backup: the recorded 90-second video, and `scripts/demo.sh stop && scripts/demo.sh 60` resets everything.
+- Backup: `docs/demo/backup.mp4` (90 s, nine captioned beats; regenerate with `scripts/record_backup.sh` against
+  a running stack), and `scripts/demo.sh stop && scripts/demo.sh 60` resets everything.
 - Speed: run at **×120** while talking (1 sim-minute per 0.5 s); pause with the header button whenever a
   judge asks a question. Reset from the header if anything looks wrong — it replays identically.
 
