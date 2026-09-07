@@ -89,8 +89,12 @@ Say *exposure*. The export has no billing records, so nothing here shows what wa
 
 ## Deploying (public backup URL)
 
+Live: web **https://dockrisk.vercel.app** (Vercel, `apps/web`), API **https://dockrisk-api.myarchive.cc** (a VPS,
+behind Cloudflare Tunnel → the host's Caddy → the `dockrisk-api` container).
+
 `services/Dockerfile` builds the API and simulator into one image on the **synthetic sample** — the organizer
 workbook and the local database are git- and docker-ignored, so a public deployment never carries real customer
-names. Run it anywhere that takes a container (Fly.io, Railway, Render), set `NEXT_PUBLIC_API_URL` to its URL and
-deploy `apps/web` to Vercel. The LLM features read `OPENAI_BASE_URL` / `OPENAI_API_KEY` /
+names. `scripts/deploy-vps.sh` ships the tracked tree plus the public route/city caches to the VPS and rebuilds
+with `deploy/vps/docker-compose.yml`; `cd apps/web && vercel deploy --prod` redeploys the web with
+`NEXT_PUBLIC_API_URL` set in the Vercel project. The LLM features read `OPENAI_BASE_URL` / `OPENAI_API_KEY` /
 `DOCKRISK_EXTRACT_PROVIDER` / `DOCKRISK_EXTRACT_MODEL` from the environment and fall back to rules when absent.

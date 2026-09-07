@@ -1,0 +1,30 @@
+# DockRisk API + simulator on the VPS, behind the existing Caddy (network ketchio-web).
+# Layout on the host: ~/apps/dockrisk/{docker-compose.yml, .env, src/}. Ship src/ with scripts/deploy-vps.sh.
+services:
+  api:
+    build:
+      context: ./src
+      dockerfile: services/Dockerfile
+    image: dockrisk-api
+    container_name: dockrisk-api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      SIM_SPEED: "60"
+    networks:
+      - shared-web
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://127.0.0.1:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "3"
+networks:
+  shared-web:
+    external: true
+    name: ketchio-web

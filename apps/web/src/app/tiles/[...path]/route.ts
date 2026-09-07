@@ -9,7 +9,8 @@ import path from "node:path";
  * OSM street tiles are NOT proxied: OpenStreetMap's tile usage policy forbids it (their servers answer a
  * proxy with an "Access blocked" tile). The browser fetches those directly.
  * Cached files live in .tile-cache/ (git-ignored). Stale-while-error: if the upstream fails and a cached
- * copy exists, the cached copy is served with an x-tile-cache: stale header.
+ * copy exists, the cached copy is served with an x-tile-cache: stale header. On a read-only filesystem
+ * (Vercel) the cache write is skipped and the proxy degrades to a plain pass-through.
  */
 const UP: Record<string, (p: string[]) => string> = {
   sat: ([z, y, x]) => `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`,
@@ -34,8 +35,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ path: stri
     const ct = r.headers.get("content-type") ?? "";
     const buf = Buffer.from(await r.arrayBuffer());
     if (!ct.startsWith("image/") || buf.length < 200) throw new Error(`upstream returned ${ct || "no content-type"} (${buf.length} bytes) — not cached`);
-    await mkdir(path.dirname(file), { recursive: true });
-    await writeFile(file, buf);
+    try { await mkdir(path.dirname(file), { recursive: true }); await writeFile(file, buf); } catch { /* read-only fs: pass-through */ }
     return new Response(buf, { headers: { ...headers, "x-tile-cache": "miss" } });
   } catch (e) {
     try { return new Response(await readFile(file), { headers: { ...headers, "x-tile-cache": "stale" } }); } catch { /* nothing cached */ }

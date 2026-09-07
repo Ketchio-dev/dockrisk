@@ -3,7 +3,9 @@
 **/.venv
 **/__pycache__
 data/portal-downloads
-data/geo
+data/geo/*
+!data/geo/routes.json
+!data/geo/cities.json
 *.db
 *.db-journal
 apps/web/.tile-cache
