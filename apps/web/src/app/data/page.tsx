@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { api, fmtMin, type Exposure } from "@/lib/api";
+import { api, fmtMin, cityCase, type Backtest, type Exposure } from "@/lib/api";
 import { PageHeader } from "@/components/Brand";
 
 type DQ = { rule: string; affected: number; total: number; pct: number; severity: "error" | "warn" | "info"; note: string };
@@ -56,15 +56,42 @@ function DwellChart({ h, free }: { h: NonNullable<Exposure["histogram"]>; free: 
   );
 }
 
+/** Weekly drafted charges over the export window: ink bars, the busiest week labelled. */
+function WeekChart({ weeks }: { weeks: Backtest["by_week"] }) {
+  const W = 720, H = 120, PL = 40, PR = 12, PT = 18, PB = 22;
+  const max = Math.max(1, ...weeks.map((w) => w.amount));
+  const iw = (W - PL - PR) / Math.max(1, weeks.length);
+  const y = (v: number) => PT + (1 - v / max) * (H - PT - PB);
+  const best = weeks.reduce((a, b) => (b.amount > a.amount ? b : a), weeks[0]);
+  const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const wk = (s: string) => { const d = new Date(s + "T00:00:00"); return `${d.getDate()} ${MON[d.getMonth()]}`; };
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Drafted charges per week">
+      {[0, max / 2, max].map((v, i) => <g key={i}><line x1={PL} x2={W - PR} y1={y(v)} y2={y(v)} stroke="var(--rule)" /><text x={PL - 6} y={y(v) + 3} fontSize="9" textAnchor="end" fill="var(--ink-4)" fontFamily="var(--font-mono)">{v >= 1000 ? `$${Math.round(v / 1000)}k` : `$${Math.round(v)}`}</text></g>)}
+      {weeks.map((w, i) => (
+        <g key={w.week}>
+          <rect x={PL + i * iw + 3} y={y(w.amount)} width={iw - 6} height={Math.max(0, y(0) - y(w.amount))} fill={w === best ? "var(--money)" : "var(--ink)"} opacity={w === best ? 1 : 0.85} />
+          <text x={PL + i * iw + iw / 2} y={H - 8} fontSize="9" textAnchor="middle" fill="var(--ink-4)" fontFamily="var(--font-mono)">{wk(w.week)}</text>
+          {w === best && <text x={PL + i * iw + iw / 2} y={y(w.amount) - 5} fontSize="10" fontWeight="600" textAnchor="middle" fill="var(--ink)" fontFamily="var(--font-sans)">${w.amount.toLocaleString()} · {w.over} stops over</text>}
+        </g>
+      ))}
+    </svg>
+  );
+}
+
 export default function DataPage() {
   const [dq, setDq] = useState<DQ[]>([]);
   const [ds, setDs] = useState<Dataset | null>(null);
   const [free, setFree] = useState(120); const [lo, setLo] = useState(75); const [hi, setHi] = useState(100); const [region, setRegion] = useState(1); const [cap, setCap] = useState(48);
   const [ex, setEx] = useState<Exposure | null>(null);
+  const [bt, setBt] = useState<Backtest | null>(null);
   const [adjust, setAdjust] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
   useEffect(() => { api<DQ[]>("/data-quality").then(setDq); api<Dataset>("/dataset").then(setDs); }, []);
-  useEffect(() => { const t = setTimeout(() => api<Exposure>(`/exposure?free_min=${free}&rate_low=${lo}&rate_high=${Math.max(lo, hi)}&region_only=${region}&cap_min=${cap * 60}`).then(setEx), 150); return () => clearTimeout(t); }, [free, lo, hi, region, cap]);
+  useEffect(() => { const t = setTimeout(() => {
+    api<Exposure>(`/exposure?free_min=${free}&rate_low=${lo}&rate_high=${Math.max(lo, hi)}&region_only=${region}&cap_min=${cap * 60}`).then(setEx);
+    api<Backtest>(`/backtest?free_min=${free}&rate=${lo}&region_only=${region}&cap_min=${cap * 60}`).then(setBt).catch(() => setBt(null));
+  }, 150); return () => clearTimeout(t); }, [free, lo, hi, region, cap]);
 
   const Slider = ({ label, v, set, min, max, step = 1, unit = "" }: { label: string; v: number; set: (n: number) => void; min: number; max: number; step?: number; unit?: string }) => (
     <label className="block text-xs ink-3">{label} <span className="display text-[13px]" style={{ color: "var(--ink)" }}>{v}{unit}</span>
@@ -125,6 +152,41 @@ export default function DataPage() {
             ))}</tbody>
           </table>
           <p className="mt-2 text-xs ink-3">Earliest dock arrival to the recorded pickup or delivery completion.</p>
+        </section>
+      )}
+
+      {bt && bt.n_total > 0 && (
+        <section className="mb-9">
+          <div className="mb-2 flex items-baseline justify-between"><h2 className="h">If DockRisk had been running</h2><span className="label">every stop in the export replayed through the rules · {bt.window[0]} to {bt.window[1]}</span></div>
+          <div className="rule-t rule-b grid grid-cols-3 gap-6 py-4">
+            <div>
+              <div className="label">Warned in time</div>
+              <div className="display mt-1 text-[34px]">{bt.warning.true_positive} <span className="text-[18px] ink-3">of {bt.warning.exceeded}</span></div>
+              <div className="mt-1.5 text-[11px] leading-snug ink-3">stops that went past free time were flagged {bt.warning.lead_min} min before billing started · precision {bt.warning.precision != null ? Math.round(bt.warning.precision * 100) : "—"}% · model trained before {bt.cutoff}, scored after</div>
+            </div>
+            <div>
+              <div className="label">Charges drafted</div>
+              <div className="display mt-1 text-[34px]">{bt.charges.n} <span className="text-[18px] ink-3">· ${bt.charges.amount.toLocaleString()}</span></div>
+              <div className="mt-1.5 text-[11px] leading-snug ink-3">{bt.charges.billable_hours} billable hours in {bt.charges.days} days at ${lo}/h, floored to {bt.rules.increment_min}-min increments · median charge ${bt.charges.median_charge}</div>
+            </div>
+            <div>
+              <div className="label">Per 30 days</div>
+              <div className="display mt-1 text-[34px]">${Math.round(bt.charges.amount_per_30d / 1000)}k</div>
+              <div className="mt-1.5 text-[11px] leading-snug ink-3">{bt.charges.with_appointment} charges had an appointment on file, {bt.charges.without_appointment} would start the clock at arrival</div>
+            </div>
+          </div>
+          {bt.by_week.length > 1 && <div className="mt-3"><WeekChart weeks={bt.by_week} /></div>}
+          <p className="mt-1 text-xs ink-3">Drafted charges by the week the truck arrived. Detention is bursty: the busiest week is several times the quietest, so a desk that only watches averages plans for the wrong month.</p>
+          <table className="ledger mt-4 text-xs">
+            <thead><tr><th className="text-left">Where the charges come from</th><th className="r">Stops</th><th className="r">Over free</th><th className="r">Typical overrun</th><th className="r">Billable</th><th className="r">Drafted</th></tr></thead>
+            <tbody>{bt.top_places.slice(0, 6).map((p) => (
+              <tr key={`${p.customer}-${p.city}-${p.stop_kind}`}>
+                <td>{p.customer} <span className="ink-3">· {cityCase(p.city)} · {p.stop_kind}</span>{p.review && <div className="t-warn text-[11px]">{p.review}</div>}</td>
+                <td className="num r">{p.stops}</td><td className="num r">{p.over_free}</td><td className="num r">{p.median_over_h != null ? `${p.median_over_h} h` : "—"}</td><td className="num r">{p.billable_hours} h</td><td className="display r text-[14px]">${p.amount.toLocaleString()}</td>
+              </tr>
+            ))}</tbody>
+          </table>
+          <p className="mt-2 text-xs ink-3">Customers are anonymized here. Not replayed, because the export cannot support it: {bt.not_replayed.map((s) => s.split(" (")[0]).join("; ")}.</p>
         </section>
       )}
 

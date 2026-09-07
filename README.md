@@ -19,6 +19,7 @@ services/core/hos.py        Canadian HOS (SOR/2005-313): 13/14/16 h, 10 h off + 
 services/core/geofence.py   property + dock polygons, debounce, jitter tolerance; centroid fallback marked low-confidence
 services/core/visits.py     facility-visit state machine, detention policy engine, evidence packet, replay-safe charges
 services/core/matching.py   next-load rescue: eligibility filters + ranked candidates with reasons
+services/core/backtest.py   history replay: charges over the export window, 30-min warning scored out of sample, anonymized
 services/api/main.py        FastAPI: ingest telemetry/duty, visits, charges, exceptions, HOS, rescue, snapshot + SSE stream
 services/sim/main.py        separate simulator: one virtual clock, OSRM road geometry, scripted dock dwell + 401 slowdown
 apps/web                    Next.js: dispatcher dashboard (map + satellite toggle, exception inbox, three clocks) and driver ELD-companion view
@@ -26,6 +27,14 @@ docs/brief                  the organizer brief and what the data actually says 
 docs/plan                   plan v2 against the real brief
 docs/second-opinion         prompts and answers from other models that shaped the design
 ```
+
+## History replay (backtest)
+
+`uv run python -m core.backtest` replays every stop in the export through the detention rules: charges over the
+whole window (floored to the increment, priced at the assumed rate) and the 30-minute warning scored out of sample
+(model trained on the first 28 days, scored on the rest). Customer names are anonymized in the output. Served at
+`GET /backtest` and shown on `/data` under *If DockRisk had been running*.
+
 
 ## Run
 

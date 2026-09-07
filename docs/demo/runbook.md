@@ -14,11 +14,15 @@ scenario (`dock_squeeze`, seed 7) produces; if a number differs on stage, say so
 
 ## 0:00–1:00 — the finding (`/data`)
 
-"We opened the carrier's own 62-day TruckMate export. One dwell per bill and stop, Southern Ontario only:
-**804 hours past the free two hours → $32k–$43k a month of gross potential detention exposure** at
-$75–$100/h. Median dwell is under an hour; the p90 sits right at the two-hour line. The money is in a thin
-tail — exactly what manual logging misses." Move the free-time slider to 90 min; the number moves. Say
-*exposure*, never *unbilled*: the export has no billing records.
+"We opened the carrier's own 62-day TruckMate export and replayed every Southern Ontario stop through the
+rules. **257 detention charges, 768 billable hours, $57.6k at $75/h — about $31k a month** — and July was
+three times August, so this is bursty, not steady." Scroll to *If DockRisk had been running*: "The
+30-minute warning, trained on the first four weeks and scored on the last four: **115 of the 126 stops that
+went over free time were flagged half an hour before billing started** — recall 91 %, precision 79 %."
+Point at the histogram: median wait is under an hour; the money is in the thin tail past the two-hour line.
+Say *exposure* / *gross potential charges*, never *unbilled*: the export has no billing records. Say what
+was not replayed: hours-of-service (no duty logs in the export), check-in and release times, contract
+eligibility.
 
 ## 1:00–2:00 — one truck (`/`, click the hero card)
 

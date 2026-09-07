@@ -60,3 +60,13 @@ export const hhmm = (ts: string | null | undefined) => (ts ? ts.slice(11, 16) : 
 export const TZ = "ET"; // all sim and export timestamps are America/Toronto local time, stored without offset
 
 export const cityCase = (c: string | null | undefined) => (c ? c.toLowerCase().replace(/(^|[\s-])([a-z])/g, (m) => m.toUpperCase()).replace(/\bSt\b/, "St.") : "—");
+
+export type Backtest = {
+  n_total: number; n_train: number; n_test: number; window: string[]; cutoff: string; test_days: number;
+  rules: { free_time_min: number; rate_per_hour: number; increment_min: number; clock_start: string; warning_at_min: number; warning_lead_min: number; threshold: number };
+  warning: { decisions: number; warned: number; exceeded: number; true_positive: number; false_positive: number; false_negative: number; true_negative: number; precision: number | null; recall: number | null; lead_min: number; note: string };
+  charges: { days: number; n: number; stops_over_free: number; billable_hours: number; amount: number; amount_per_30d: number; median_charge: number; busiest_week: string | null; with_appointment: number; without_appointment: number };
+  top_places: { customer: string; city: string; stop_kind: string; stops: number; over_free: number; billable_hours: number; amount: number; median_over_h: number | null; review: string | null }[];
+  by_week: { week: string; n: number; over: number; amount: number }[];
+  not_replayed: string[]; wording: string;
+};

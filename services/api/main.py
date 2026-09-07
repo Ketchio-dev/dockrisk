@@ -16,6 +16,7 @@ from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
 from core.analytics import build_dwell_history, build_dwell_model, exposure_summary, predict_remaining
+from core.backtest import replay
 from core.db import DB_PATH, connect, init_schema
 from core.geofence import GeofenceIndex, GeofenceTracker
 from core.hos import DutyEvent, PlanStep, check_plan, compute_clocks, cycle_note, departure_margin, norm_cycle, recent_segments, seed_history_from_snapshot
@@ -274,6 +275,13 @@ def policies_confirm(c: ConfirmIn):
                     "confirmed", c.source_text, f"{c.confirmed_by} (from {c.source})", now_sim().isoformat(sep=" ")))
     S.conn.commit()
     return row("SELECT * FROM detention_policies ORDER BY policy_id DESC LIMIT 1")
+
+
+@app.get("/backtest")
+def backtest(free_min: int = 120, rate: float = 75, increment_min: int = 15, warn_lead_min: int = 30, threshold: float = 0.5,
+             region_only: int = 1, cap_min: int = 2880, train_days: int = 28):
+    """Replay the carrier's history through the rules: out-of-sample warning precision/recall and draft charges."""
+    return replay(S.conn, free_min, rate, increment_min, warn_lead_min, threshold, bool(region_only), cap_min, train_days)
 
 
 @app.get("/exposure")
