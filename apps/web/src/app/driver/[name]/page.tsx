@@ -4,6 +4,29 @@ import { api, fmtH, fmtMin, hhmm, type Assignment, type Snapshot, type Visit, ci
 import { LogGrid } from "@/components/DayBar";
 import { Mark } from "@/components/Brand";
 
+const Btn = ({ children, onClick, primary = false }: { children: React.ReactNode; onClick: () => void; primary?: boolean }) => (
+  <button onClick={onClick} className={`btn btn-lg w-full ${primary ? "btn-primary" : ""}`}>{children}</button>
+);
+/** A quiet secondary action: text only, full width, left-aligned like a list row. */
+const Row = ({ children, onClick }: { children: React.ReactNode; onClick: () => void }) => (
+  <button onClick={onClick} className="rule-b w-full py-2.5 text-left text-sm ink-2">{children}</button>
+);
+/** One control for a set of exclusive states: a single bordered strip, the current cell filled with ink. */
+const Segmented = ({ items, value, onPick }: { items: [string, string][]; value?: string | null; onPick: (v: string) => void }) => (
+  <div className="grid overflow-hidden" style={{ gridTemplateColumns: `repeat(${items.length}, 1fr)`, border: "1px solid var(--rule-strong)", borderRadius: 4 }}>
+    {items.map(([v, l], i) => (
+      <button key={v} onClick={() => onPick(v)} className="h-10 text-[13px] font-medium disabled:opacity-45"
+        style={{ borderLeft: i ? "1px solid var(--rule-strong)" : undefined, background: value === v ? "var(--ink)" : "var(--surface)", color: value === v ? "#fff" : "var(--ink)" }}>{l}</button>
+    ))}
+  </div>
+);
+const Big = ({ label, value, tone }: { label: string; value: string; tone?: "bad" | "warn" }) => (
+  <div><div className="label">{label}</div><div className={`display mt-1 text-[32px] ${tone === "bad" ? "t-bad" : tone === "warn" ? "t-warn" : ""}`}>{value}</div></div>
+);
+const Small = ({ label, value, bad }: { label: string; value: string; bad?: boolean }) => (
+  <div className="flex items-baseline justify-between text-xs"><span className="ink-3">{label}</span><span className={`num text-[13px] ${bad ? "t-bad" : ""}`}>{value}</span></div>
+);
+
 export default function DriverApp({ params }: { params: Promise<{ name: string }> }) {
   const { name } = use(params);
   const driver = decodeURIComponent(name);
@@ -18,17 +41,14 @@ export default function DriverApp({ params }: { params: Promise<{ name: string }
   const ev = (kind: string, payload?: Record<string, unknown>) => visit && act(() => api(`/visits/${visit.visit_id}/driver-event`, { method: "POST", body: JSON.stringify({ kind, actor: driver, payload }) }));
   const duty = (status: string) => act(() => api("/ingest/duty", { method: "POST", body: JSON.stringify({ driver_name: driver, ts: snap?.sim.sim_ts, status, source: "driver" }) }));
 
-  const Btn = ({ children, onClick, primary = false }: { children: React.ReactNode; onClick: () => void; primary?: boolean }) => (
-    <button disabled={busy} onClick={onClick} className={`btn btn-lg w-full ${primary ? "btn-primary" : ""}`}>{children}</button>
-  );
   const nextStep = visit ? (!visit.timestamps.checked_in_ts ? "checked_in" : !visit.timestamps.service_complete_ts ? "service_complete" : !visit.timestamps.released_ts ? "released" : null) : null;
   const now = snap?.sim.sim_ts;
-  const Big = ({ label, value, tone }: { label: string; value: string; tone?: "bad" | "warn" }) => (
-    <div><div className="label">{label}</div><div className={`display mt-1 text-[32px] ${tone === "bad" ? "t-bad" : tone === "warn" ? "t-warn" : ""}`}>{value}</div></div>
-  );
+
 
   return (
     <main className="surface mx-auto min-h-screen max-w-md px-5 pb-10 pt-4" style={{ boxShadow: "0 0 0 1px var(--rule)" }}>
+     {/* one disabled boundary while a request is in flight: every action inside goes quiet together */}
+     <fieldset disabled={busy} className="contents">
       <header className="rule-b mb-4 flex items-center justify-between pb-3">
         <div className="flex items-center gap-2.5">
           <Mark size={16} />
@@ -54,43 +74,46 @@ export default function DriverApp({ params }: { params: Promise<{ name: string }
           {visit.on_time == null && (
             <div className="mb-3">
               <div className="label mb-1.5">How did you arrive?</div>
-              <div className="grid grid-cols-4 gap-2">{[["early", "Early"], ["on_time", "On time"], ["late", "Late"], ["wrong_entrance", "Wrong gate"]].map(([c, l]) => <button key={c} disabled={busy} onClick={() => ev("arrival_class", { value: c })} className="btn">{l}</button>)}</div>
+              <Segmented items={[["early", "Early"], ["on_time", "On time"], ["late", "Late"], ["wrong_entrance", "Wrong gate"]]} onPick={(c) => ev("arrival_class", { value: c })} />
             </div>
           )}
-          {!visit.timestamps.checked_in_ts && (
-            <div className="mb-2 grid gap-2">
-              <Btn primary={nextStep === "checked_in"} onClick={() => ev("checked_in", { at: "now" })}>Checked in now</Btn>
-              <Btn onClick={() => ev("checked_in", { at: "arrival" })}>Already checked in at arrival, {hhmm(visit.timestamps.property_entered_ts)}</Btn>
-            </div>
-          )}
-          <div className="grid grid-cols-2 gap-2">
-            {!visit.timestamps.at_dock_ts && <Btn onClick={() => ev("door_assigned")}>Door assigned</Btn>}
-            {!visit.timestamps.service_complete_ts && <Btn primary={nextStep === "service_complete"} onClick={() => ev("service_complete")}>Loading done</Btn>}
-            {!visit.timestamps.released_ts && <Btn primary={nextStep === "released"} onClick={() => ev("released")}>Released, leaving</Btn>}
+          {nextStep === "checked_in" && <Btn primary onClick={() => ev("checked_in", { at: "now" })}>Checked in now</Btn>}
+          {nextStep === "service_complete" && <Btn primary onClick={() => ev("service_complete")}>Loading done</Btn>}
+          {nextStep === "released" && <Btn primary onClick={() => ev("released")}>Released, leaving</Btn>}
+          <div className="rule-t mt-3">
+            {!visit.timestamps.checked_in_ts && <Row onClick={() => ev("checked_in", { at: "arrival" })}>Already checked in at arrival, {hhmm(visit.timestamps.property_entered_ts)}</Row>}
+            {!visit.timestamps.at_dock_ts && <Row onClick={() => ev("door_assigned")}>Door assigned</Row>}
+            {nextStep !== "service_complete" && !visit.timestamps.service_complete_ts && <Row onClick={() => ev("service_complete")}>Loading done</Row>}
+            {nextStep !== "released" && !visit.timestamps.released_ts && <Row onClick={() => ev("released")}>Released, leaving</Row>}
           </div>
         </section>
       )}
 
       <section className="mb-7">
         <div className="mb-2 flex items-baseline justify-between"><h2 className="h">Hours</h2>{me?.hos && <span className="text-xs ink-3">limiting: {me.hos.binding}</span>}</div>
-        {me?.hos ? (
-          <>
-            <div className="rule-t rule-b grid grid-cols-3 gap-3 py-3">
-              {[["Drive left", me.hos.remaining_drive_h], ["On duty left", me.hos.remaining_onduty_h], ["Window left", me.hos.remaining_elapsed_h]].map(([l, v]) => (
-                <Big key={l as string} label={l as string} value={fmtH(v as number)} tone={(v as number) < 1.5 ? "bad" : undefined} />
-              ))}
-            </div>
-            {now && me.hos.segments && (
-              <div className="mt-3">
-                <div className="label mb-1">Today&apos;s log · {now.slice(0, 10)}</div>
-                <LogGrid day={now.slice(0, 10)} now={now} segments={me.hos.segments} />
+        {me?.hos ? (() => {
+          const h = me.hos;
+          const rows: [string, number][] = [["Drive left", h.remaining_drive_h], ["On duty left", h.remaining_onduty_h], ["Window left", h.remaining_elapsed_h]];
+          const lead = rows.reduce((a, b) => (b[1] < a[1] ? b : a));
+          return (
+            <>
+              <div className="rule-t rule-b grid gap-4 py-3" style={{ gridTemplateColumns: "1fr 1fr" }}>
+                <Big label={lead[0]} value={fmtH(lead[1])} tone={lead[1] < 1.5 ? "bad" : undefined} />
+                <div className="space-y-1.5 self-end">{rows.filter((r) => r !== lead).map(([l, v]) => <Small key={l} label={l} value={fmtH(v)} bad={v < 1.5} />)}</div>
               </div>
-            )}
-            <div className="mt-1 text-[11px] ink-3">{me.hos.provenance}{me.hos.cycle_note ? ` · ${me.hos.cycle_note}` : ""}</div>
-          </>
-        ) : <p className="text-sm ink-3">No duty history yet.</p>}
-        <div className="mt-3 grid grid-cols-4 gap-2">
-          {["off", "sleeper", "driving", "on_duty"].map((s) => <button key={s} disabled={busy} onClick={() => duty(s)} className={`btn ${me?.duty_status === s ? "btn-on" : ""}`}>{s.replace("_", " ")}</button>)}
+              {now && h.segments && (
+                <div className="mt-3">
+                  <div className="label mb-1">Today&apos;s log · {now.slice(0, 10)}</div>
+                  <LogGrid day={now.slice(0, 10)} now={now} segments={h.segments} />
+                </div>
+              )}
+              <div className="mt-1 text-[11px] ink-3">{h.provenance}{h.cycle_note ? ` · ${h.cycle_note}` : ""}</div>
+            </>
+          );
+        })() : <p className="text-sm ink-3">No duty history yet.</p>}
+        <div className="mt-3">
+          <div className="label mb-1.5">Duty status</div>
+          <Segmented items={[["off", "Off"], ["sleeper", "Sleeper"], ["driving", "Driving"], ["on_duty", "On duty"]]} value={me?.duty_status} onPick={duty} />
         </div>
       </section>
 
@@ -118,6 +141,7 @@ export default function DriverApp({ params }: { params: Promise<{ name: string }
         </div>
       </section>
       <p className="label mt-8">Duty-status companion — a prototype, not a certified ELD.</p>
+     </fieldset>
     </main>
   );
 }

@@ -45,8 +45,7 @@ export default function Policies() {
     return (
       <label className="block text-[11px] ink-3">
         <span className="flex items-baseline justify-between">{label}
-          {unknown && DEFAULTS[k] !== undefined && <span className="chip chip-warn" style={{ height: 18, fontSize: 10 }}>not stated · default {String(DEFAULTS[k])}</span>}
-          {unknown && DEFAULTS[k] === undefined && <span className="chip" style={{ height: 18, fontSize: 10 }}>not stated</span>}
+          {unknown && <span className={`text-[10px] ${DEFAULTS[k] !== undefined ? "t-warn" : "ink-4"}`}>{DEFAULTS[k] !== undefined ? `not stated — default ${String(DEFAULTS[k])}` : "not stated"}</span>}
         </span>
         <input type={type} value={v ?? ""} placeholder={DEFAULTS[k] !== undefined ? `default ${String(DEFAULTS[k])}` : "—"} onChange={(e) => setTerms({ ...terms!, [k]: e.target.value === "" ? null : type === "number" ? Number(e.target.value) : e.target.value })}
           className="field display mt-1 text-[16px]" style={{ height: 34, borderColor: unknown ? "#f0c69a" : undefined }} />
@@ -75,8 +74,8 @@ export default function Policies() {
           {!ex && !activated && <p className="text-sm ink-3">Extracted terms appear here for review.</p>}
           {ex && terms && (
             <>
-              <div className="flex items-center gap-2 text-[11px]">
-                <span className="chip">{ex.source === "extracted-llm" ? "read by the model" : "read by rules"}{ex.model ? ` · ${ex.model}` : ex.provider ? ` · ${ex.provider}` : ""}</span>
+              <div className="label flex items-center gap-2">
+                <span>{ex.source === "extracted-llm" ? "Read by the model" : "Read by rules"}{ex.model ? ` · ${ex.model}` : ex.provider ? ` · ${ex.provider}` : ""} · the engine computes every charge</span>
                 {ex.warning && <span className="t-warn">{ex.warning}</span>}
               </div>
               <div className="grid grid-cols-2 gap-3">

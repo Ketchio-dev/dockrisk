@@ -35,8 +35,8 @@
 
 html, body { background: var(--canvas); color: var(--ink); font-family: var(--font-sans); font-size: 14px; line-height: 1.45; }
 body { font-feature-settings: "tnum" 1; }
-::selection { background: var(--accent-soft); }
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+::selection { background: var(--money-soft); }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
 
 /* type roles */
 .num, .tabular-nums { font-variant-numeric: tabular-nums; }
@@ -71,7 +71,7 @@ a.plain { text-decoration: none; }
 
 /* inputs */
 .field { width: 100%; height: 30px; padding: 0 8px; border: 1px solid var(--rule-strong); border-radius: 4px; background: var(--surface); color: var(--ink); font-size: 13px; }
-.field:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: transparent; }
+.field:focus { outline: 2px solid var(--ink); outline-offset: 0; border-color: transparent; }
 textarea.field { height: auto; padding: 10px 12px; line-height: 1.55; }
 
 /* status: text + a 2px left bar, never a coloured card */
@@ -80,9 +80,6 @@ textarea.field { height: auto; padding: 10px 12px; line-height: 1.55; }
 .bar-ok { border-left: 2px solid var(--ok); }
 .bar-none { border-left: 2px solid var(--rule); }
 .t-bad { color: var(--bad); } .t-warn { color: var(--warn); } .t-ok { color: var(--ok); } .t-ink3 { color: var(--ink-3); }
-.chip { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border: 1px solid var(--rule-strong); border-radius: 3px; font-size: 11px; color: var(--ink-2); background: var(--surface); }
-.chip-warn { border-color: #f0c69a; background: var(--warn-bg); color: var(--warn); }
-.chip-ok { border-color: #b9dcc6; background: var(--ok-bg); color: var(--ok); }
 
 /* tables read as ledgers: hairlines, right-aligned figures, no zebra */
 table.ledger { width: 100%; border-collapse: collapse; }

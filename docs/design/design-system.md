@@ -134,3 +134,26 @@ Removed: the five-dot story strip (the bar carries arrival, waiting, risk and re
 Inter, `rounded-lg`, the blue primary, the violet "extracted-llm" chip.
 
 Tokens table above is superseded by `apps/web/src/app/globals.css`.
+
+## Fifth pass — structure, not chrome (2026-09-07)
+
+An audit against the usual generated-dashboard tells found the tokens clean and the problem structural:
+equal-column stat grids in the three most visible places, pills for assumptions and status, a speed sparkline,
+a nine-swatch legend card, and four-across button grids on the phone. Each is a deletion or a re-stack.
+
+- **One number per block.** The Board's open row shows the *binding* deadline (billing clock or hours to a
+  legal stop, whichever comes first) at 30 px; the other deadline and the physical wait are one-line figures
+  beside it. The Data page's replay block leads with the recall sentence; charges and per-30-day figures are a
+  line of small figures beneath. The driver's Hours block leads with whichever of drive / on-duty / window is
+  smallest. Rule: a block has one large figure; if two figures are the same size, neither is the point.
+- **Sentences, not chips.** Assumptions on /data read as one line ("Assumes 120 min free, $75–100/h, …") with
+  *Adjust* beside it; "not stated — default 120" on /policies is amber text under the label; the model/rules
+  source is a label line. `.chip` is gone from the stylesheet.
+- **No sparkline.** Track & trace is one line of totals and the stops ledger. The map draws the track.
+- **Map chrome flat.** No shadows on the buttons; the key is a strip with three entries and a *key* toggle.
+- **Driver app actions stacked.** One filled button (the next expected event), the other events as text rows
+  under a hairline, arrival class and duty status as segmented controls (one bordered strip, the current cell
+  ink). Buttons disable together through one `fieldset`.
+- **Blue leak closed.** Selection is `--money-soft`; focus rings are ink. Blue appears only on the map.
+- **Day bar labels never collide.** Labels on the same row that would overlap (estimated from text length)
+  drop to a second line; the bar grows to fit.

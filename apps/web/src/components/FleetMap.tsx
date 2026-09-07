@@ -57,6 +57,7 @@ export default function FleetMap({ fleet, facilities, exceptions, selected, onSe
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [showMinor, setShowMinor] = useState(false);
   const [zoom, setZoom] = useState(8);
+  const [key, setKey] = useState(false);
   useEffect(() => {
     let live = true;
     const load = () => fetch(`${API}/incidents`).then((r) => r.json()).then((d: { incidents: Incident[] }) => live && setIncidents(d.incidents)).catch(() => {});
@@ -126,23 +127,31 @@ export default function FleetMap({ fleet, facilities, exceptions, selected, onSe
         })}
       </MapContainer>
       <div className="absolute right-3 top-3 z-[1000] flex gap-1.5">
-        <button onClick={() => setShowMinor((s) => !s)} className="btn btn-sm shadow-sm" title="Ontario 511 live events on 400-series highways in the region">
+        <button onClick={() => setShowMinor((s) => !s)} className="btn btn-sm" title="Ontario 511 live events on 400-series highways in the region">
           511 live · {incidents.filter((i) => i.severity === "severe").length} severe{zoom >= 10 ? ` · ${incidents.filter((i) => i.severity === "lane").length} lane` : ""}{showMinor ? " · minor" : ""}
         </button>
-        <button onClick={() => setSatellite((s) => !s)} className={`btn btn-sm shadow-sm ${satellite ? "btn-on" : ""}`}>Satellite</button>
-        <button onClick={() => { onSelect(null); setResetToken((t) => t + 1); }} className="btn btn-sm shadow-sm">Region</button>
+        <button onClick={() => setSatellite((s) => !s)} className={`btn btn-sm ${satellite ? "btn-on" : ""}`}>Satellite</button>
+        <button onClick={() => { onSelect(null); setResetToken((t) => t + 1); }} className="btn btn-sm">Region</button>
       </div>
-      <div className="absolute bottom-5 left-3 z-[1000] px-3 py-2 text-[11px] shadow-sm" style={{ background: "rgba(255,255,255,.94)", border: "1px solid var(--rule)", borderRadius: 3, color: "var(--ink-2)" }}>
-        <Sw style={{ background: "#2a78d6", clipPath: "polygon(50% 0, 100% 100%, 50% 75%, 0 100%)" }}>moving, arrow = heading</Sw>
-        <Sw style={{ background: "#75746c", borderRadius: 1 }}>stopped</Sw>
-        <Sw style={{ background: "#b54708", borderRadius: "50%" }}>at a facility</Sw>
-        <Sw style={{ background: "#b42318", borderRadius: "50%" }}>under 1.5 h on duty</Sw>
-        <Sw style={{ border: "1.5px solid #1a1a17", width: 14 }}>property</Sw>
-        <Sw style={{ border: "1.5px solid #b54708", width: 14 }}>dock</Sw>
-        <Sw style={{ border: "1px dashed #a5a49b", width: 14 }}>centroid (sim)</Sw>
-        <Sw style={{ background: "#d97706", borderRadius: "50%", width: 8, height: 8 }}>511 lane closure</Sw>
-        <Sw style={{ background: "#b42318", borderRadius: "50%" }}>511 incident</Sw>
-        {sel && <div className="mono mt-1.5" style={{ color: "var(--ink)" }}>{sel.unit} · {crumbs.length} pings · odometer {sel.odometer_km ?? 0} km</div>}
+      {/* Key: three entries that matter at region zoom; the rest on demand. A strip on the canvas, not a card. */}
+      <div className="absolute bottom-5 left-3 z-[1000] px-2.5 py-1.5 text-[11px]" style={{ background: "var(--surface)", borderTop: "1px solid var(--rule-strong)", color: "var(--ink-2)" }}>
+        <div className="flex items-center gap-3">
+          <Sw style={{ background: "#2a78d6", clipPath: "polygon(50% 0, 100% 100%, 50% 75%, 0 100%)" }}>moving</Sw>
+          <Sw style={{ background: "#b54708", borderRadius: "50%" }}>at a facility</Sw>
+          <Sw style={{ background: "#b42318", borderRadius: "50%" }}>under 1.5 h</Sw>
+          <button onClick={() => setKey((k) => !k)} className="btn btn-text btn-sm text-[11px]" style={{ height: 18, padding: 0 }}>{key ? "less" : "key"}</button>
+        </div>
+        {key && (
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5">
+            <Sw style={{ background: "#75746c", borderRadius: 1 }}>stopped</Sw>
+            <Sw style={{ border: "1.5px solid #1a1a17", width: 14 }}>property</Sw>
+            <Sw style={{ border: "1.5px solid #b54708", width: 14 }}>dock</Sw>
+            <Sw style={{ border: "1px dashed #a5a49b", width: 14 }}>centroid (sim)</Sw>
+            <Sw style={{ background: "#d97706", borderRadius: "50%", width: 8, height: 8 }}>511 lane closure</Sw>
+            <Sw style={{ background: "#b42318", borderRadius: "50%" }}>511 incident</Sw>
+          </div>
+        )}
+        {sel && <div className="mono mt-1" style={{ color: "var(--ink)" }}>{sel.unit} · {crumbs.length} pings · odometer {sel.odometer_km ?? 0} km</div>}
       </div>
     </div>
   );

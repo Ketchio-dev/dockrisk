@@ -35,7 +35,27 @@ export function DayBar({ window: [t0, t1], now, segments, bands = [], marks = []
   const pct = (t: number) => `${frac(t) * 100}%`;
   const span = (a: number, b: number) => ({ left: pct(a), width: `calc(${pct(b)} - ${pct(a)})` });
   // labels near the right edge hang to the left of their anchor so they stay inside the bar
-  const anchor = (t: number, pad = 4): React.CSSProperties => (frac(t) > 0.82 ? { left: pct(t), transform: `translateX(calc(-100% - ${pad}px))` } : { left: `calc(${pct(t)} + ${pad}px)` });
+  const hangs = (t: number) => frac(t) > 0.82;
+  const anchor = (t: number, pad = 4): React.CSSProperties => (hangs(t) ? { left: pct(t), transform: `translateX(calc(-100% - ${pad}px))` } : { left: `calc(${pct(t)} + ${pad}px)` });
+  // Two labels on one row collide when their anchors are closer than the text is wide; the later one drops
+  // to a second line. Width is estimated at 5.6 px per character of 10 px Plex, measured against a 560 px bar.
+  // Keyed by `${t}|${text}`; row 0 or 1.
+  const EST = 5.6 / 560;
+  const rowOf = (items: { t: number; text: string }[]): Record<string, 0 | 1> => {
+    const out: Record<string, 0 | 1> = {}; const taken: [number, number][] = [];
+    for (const it of [...items].sort((a, b) => a.t - b.t)) {
+      const w = (it.text.length + 2) * EST; const f = frac(it.t);   // +2 chars: the anchor pad and a breath between labels
+      const [a, b] = hangs(it.t) ? [f - w, f] : [f, f + w];
+      const r = taken.some(([x, y]) => a < y && b > x) ? 1 : 0;
+      if (r === 0) taken.push([a, b]);
+      out[`${it.t}|${it.text}`] = r;
+    }
+    return out;
+  };
+  const aboveRow = compact ? {} : rowOf([...marks.filter((m) => m.label && !m.below).map((m) => ({ t: ms(m.t), text: m.label! })), ...(nowLabel && n >= t0 && n <= t1 ? [{ t: n, text: nowLabel }] : [])]);
+  const belowRow = compact ? {} : rowOf([...bands.filter((b) => b.label).map((b) => ({ t: ms(b.a), text: b.label! })), ...marks.filter((m) => m.label && m.below).map((m) => ({ t: ms(m.t), text: m.label! }))]);
+  const aboveLines = 1 + Math.max(0, ...Object.values(aboveRow));
+  const belowLines = 1 + Math.max(0, ...Object.values(belowRow));
   const segColor: Record<string, string> = { driving: "var(--duty-drive)", on_duty: "var(--duty-on)", off: "var(--duty-off)", sleeper: "var(--duty-off)" };
   const bandStyle: Record<Band["kind"], React.CSSProperties> = {
     free: { background: FREE_BG, boxShadow: "inset 0 0 0 1px var(--ink)" },
@@ -44,10 +64,11 @@ export function DayBar({ window: [t0, t1], now, segments, bands = [], marks = []
     pickup: { background: "transparent", borderLeft: "2px solid var(--ink)", borderRight: "2px solid var(--ink)", borderTop: "2px solid var(--ink)" },
   };
   const barH = compact ? 8 : 14;
-  const top = compact ? 0 : 16;          // row 0: mark labels (0–14)
-  const axisY = top + barH + 4;          // row 2: hour axis
-  const belowY = axisY + 14;             // row 3: band labels
-  const total = compact ? barH : belowY + 12;
+  const LH = 12;                                          // one label line
+  const top = compact ? 0 : 4 + aboveLines * LH;          // row 0: mark labels, one or two lines
+  const axisY = top + barH + 4;                           // row 2: hour axis
+  const belowY = axisY + 14;                              // row 3: band labels, one or two lines
+  const total = compact ? barH : belowY + belowLines * LH;
   // hour axis: 15-min ticks under three hours, hourly under nine, otherwise every two hours
   const spanH = (t1 - t0) / H;
   const step = spanH <= 3 ? H / 4 : spanH <= 9 ? H : 2 * H;
@@ -66,7 +87,7 @@ export function DayBar({ window: [t0, t1], now, segments, bands = [], marks = []
         return (
           <div key={i}>
             <div className="absolute" style={{ top: isPickup ? top - 5 : top, height: isPickup ? 5 : barH, ...span(a, z), ...bandStyle[b.kind] }} />
-            {!compact && b.label && <span className={lbl} style={{ top: belowY, ...anchor(a, 0), color: b.kind === "billable" ? "#8a5a12" : "var(--ink-2)" }}>{b.label}</span>}
+            {!compact && b.label && <span className={lbl} style={{ top: belowY + (belowRow[`${a}|${b.label}`] ?? 0) * LH, ...anchor(a, 0), color: b.kind === "billable" ? "#8a5a12" : "var(--ink-2)" }}>{b.label}</span>}
           </div>
         );
       })}
@@ -75,14 +96,14 @@ export function DayBar({ window: [t0, t1], now, segments, bands = [], marks = []
         return (
           <div key={i}>
             <div className="absolute" style={{ top: top - (compact ? 0 : 3), height: barH + (compact ? 0 : 6), left: pct(t), width: 2, marginLeft: -1, background: c }} />
-            {!compact && m.label && <span className={`${lbl} font-medium`} style={{ top: m.below ? belowY : 2, ...anchor(t), color: c }}>{m.label}</span>}
+            {!compact && m.label && <span className={`${lbl} font-medium`} style={{ top: m.below ? belowY + (belowRow[`${t}|${m.label}`] ?? 0) * LH : 2 + (aboveRow[`${t}|${m.label}`] ?? 0) * LH, ...anchor(t), color: c }}>{m.label}</span>}
           </div>
         );
       })}
       {n >= t0 && n <= t1 && (
         <>
           <div className="absolute" style={{ top: top - (compact ? 2 : 6), height: barH + (compact ? 4 : 12), left: pct(n), width: 2, marginLeft: -1, background: "var(--ink)" }} />
-          {!compact && nowLabel && <span className={`${lbl} font-semibold`} style={{ top: 2, ...anchor(n), color: "var(--ink)" }}>{nowLabel}</span>}
+          {!compact && nowLabel && <span className={`${lbl} font-semibold`} style={{ top: 2 + (aboveRow[`${n}|${nowLabel}`] ?? 0) * LH, ...anchor(n), color: "var(--ink)" }}>{nowLabel}</span>}
         </>
       )}
       {!compact && hours.map((t) => (

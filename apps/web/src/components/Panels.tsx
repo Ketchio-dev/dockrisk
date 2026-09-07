@@ -33,7 +33,7 @@ export function ChargesList({ charges }: { charges: Charge[] }) {
           {charges.length === 0 && <tr><td colSpan={5} className="ink-3">No visits closed yet.</td></tr>}
         </tbody>
       </table>
-      {charges.length > 3 && <button onClick={() => setAll((v) => !v)} className="btn btn-sm btn-text mt-1 text-xs">{all ? "Show fewer" : `Show all ${charges.length}`}</button>}
+      {charges.length > 3 && <button onClick={() => setAll((v) => !v)} className="btn btn-sm btn-text mt-1 text-xs">{all ? "Latest three" : `All ${charges.length}`}</button>}
     </section>
   );
 }
@@ -67,7 +67,7 @@ export function RescuePanel({ bill, excludeDriver, onClose }: { bill: string; ex
         </div>
         <p className="mb-3 text-xs ink-3">Eligibility filters (position, appointment, trailer, hours plan) then ranking. A driver who fails a filter is shown with the reason; if nobody is legal, that is the answer.</p>
         {err && <p className="text-sm t-bad">{err}</p>}
-        {!data && !err && <p className="text-sm ink-3">Ranking…</p>}
+        {!data && !err && <p className="text-sm ink-3">Checking position, hours, trailer and the pickup window for every truck…</p>}
         {data && data.candidates.length === 0 && <p className="text-sm ink-3">No trucks with telemetry to rank.</p>}
         {data && (
           <ul>

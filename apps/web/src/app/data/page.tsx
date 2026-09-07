@@ -119,8 +119,8 @@ export default function DataPage() {
         <div className="label mb-1">Detention exposure, {ex?.window_days ?? "—"} days of the carrier&apos;s own records</div>
         <div className="display text-[52px]">{ex ? `$${Math.round(ex.monthly_exposure_low / 1000)}k–${Math.round(ex.monthly_exposure_high / 1000)}k` : "—"}<span className="ml-2 text-[18px] font-normal ink-3" style={{ fontFamily: "var(--font-sans)" }}>per month</span></div>
         <p className="mt-3 max-w-2xl text-sm ink-2">{ex ? `${ex.total_billable_hours} hours past the free time in ${ex.window_days} days, priced at $${lo}–${Math.max(lo, hi)} an hour.` : ""} Gross potential exposure under stated assumptions — the export has no billing records, so this is not unbilled revenue.</p>
-        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-          {[`Free time ${free} min`, `$${lo}–${Math.max(lo, hi)}/h`, region ? "Southern Ontario only" : "All Ontario", `Dwells over ${cap} h discarded`].map((c) => <span key={c} className="chip">{c}</span>)}
+        <div className="mt-2 flex flex-wrap items-baseline gap-x-2 text-xs ink-3">
+          <span>Assumes {free} min free, ${lo}–{Math.max(lo, hi)}/h, {region ? "Southern Ontario stops only" : "all Ontario stops"}, waits over {cap} h discarded.</span>
           <button onClick={() => setAdjust((v) => !v)} className="btn btn-sm btn-text text-xs">{adjust ? "Done" : "Adjust"}</button>
         </div>
         {adjust && (
@@ -158,21 +158,14 @@ export default function DataPage() {
       {bt && bt.n_total > 0 && (
         <section className="mb-9">
           <div className="mb-2 flex items-baseline justify-between"><h2 className="h">If DockRisk had been running</h2><span className="label">every stop in the export replayed through the rules · {bt.window[0]} to {bt.window[1]}</span></div>
-          <div className="rule-t rule-b grid grid-cols-3 gap-6 py-4">
-            <div>
-              <div className="label">Warned in time</div>
-              <div className="display mt-1 text-[34px]">{bt.warning.true_positive} <span className="text-[18px] ink-3">of {bt.warning.exceeded}</span></div>
-              <div className="mt-1.5 text-[11px] leading-snug ink-3">stops that went past free time were flagged {bt.warning.lead_min} min before billing started · precision {bt.warning.precision != null ? Math.round(bt.warning.precision * 100) : "—"}% · model trained before {bt.cutoff}, scored after</div>
-            </div>
-            <div>
-              <div className="label">Charges drafted</div>
-              <div className="display mt-1 text-[34px]">{bt.charges.n} <span className="text-[18px] ink-3">· ${bt.charges.amount.toLocaleString()}</span></div>
-              <div className="mt-1.5 text-[11px] leading-snug ink-3">{bt.charges.billable_hours} billable hours in {bt.charges.days} days at ${lo}/h, floored to {bt.rules.increment_min}-min increments · median charge ${bt.charges.median_charge}</div>
-            </div>
-            <div>
-              <div className="label">Per 30 days</div>
-              <div className="display mt-1 text-[34px]">${Math.round(bt.charges.amount_per_30d / 1000)}k</div>
-              <div className="mt-1.5 text-[11px] leading-snug ink-3">{bt.charges.with_appointment} charges had an appointment on file, {bt.charges.without_appointment} would start the clock at arrival</div>
+          <div className="rule-t rule-b py-4">
+            <div className="display text-[34px]">{bt.warning.true_positive} <span className="text-[18px] ink-3">of {bt.warning.exceeded}</span></div>
+            <div className="mt-1 max-w-2xl text-sm ink-2">stops that went past free time were flagged <span className="num" style={{ color: "var(--ink)" }}>{bt.warning.lead_min} min</span> before billing started. Precision {bt.warning.precision != null ? Math.round(bt.warning.precision * 100) : "—"}% — the model was trained on stops before {bt.cutoff} and scored on the rest.</div>
+            <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-xs ink-3">
+              <span><span className="num" style={{ color: "var(--ink)" }}>{bt.charges.n}</span> charges drafted · <span className="num" style={{ color: "var(--ink)" }}>${bt.charges.amount.toLocaleString()}</span> over {bt.charges.days} days</span>
+              <span><span className="num" style={{ color: "var(--ink)" }}>${Math.round(bt.charges.amount_per_30d / 1000)}k</span> per 30 days</span>
+              <span>{bt.charges.billable_hours} billable h at ${lo}/h, floored to {bt.rules.increment_min} min · median charge ${bt.charges.median_charge}</span>
+              <span>{bt.charges.with_appointment} with an appointment on file, {bt.charges.without_appointment} clocked from arrival</span>
             </div>
           </div>
           {bt.by_week.length > 1 && <div className="mt-3"><WeekChart weeks={bt.by_week} /></div>}

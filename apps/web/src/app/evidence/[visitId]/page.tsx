@@ -62,7 +62,7 @@ export default function Evidence({ params }: { params: Promise<{ visitId: string
   const [err, setErr] = useState<string | null>(null);
   useEffect(() => { api<Packet>(`/visits/${visitId}/evidence`).then(setP).catch((e) => setErr(String(e))); }, [visitId]);
   if (err) return <main className="p-8 ink-2">No packet for visit #{visitId}. <a href="/">Dispatch</a></main>;
-  if (!p) return <main className="p-8 ink-3">Loading…</main>;
+  if (!p) return <main className="mx-auto max-w-3xl px-6 py-5"><div className="label">Evidence packet · visit #{visitId}</div><div className="display mt-2 text-[46px] ink-4">$—</div><div className="rule-t mt-4" /></main>;
   const c = p.calculation; const v = p.visit;
   const day = String(v.property_entered_ts ?? v.approach_ts ?? "").slice(0, 10);
   const stops: [string, string][] = [["Appointment", "appointment_start_ts"], ["Entered property", "property_entered_ts"], ["Checked in", "checked_in_ts"], ["At dock", "at_dock_ts"], ["Loading done", "service_complete_ts"], ["Released", "released_ts"], ["Left property", "gate_exited_ts"]];

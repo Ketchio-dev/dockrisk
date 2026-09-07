@@ -30,12 +30,22 @@ function classify(f: FleetRow, v: Visit | null): Row["status"] & { urgency: numb
 
 const toneCls = (t: Tone | "ink") => ({ bad: "t-bad", warn: "t-warn", ok: "t-ok", muted: "ink-3", ink: "" }[t]);
 
-function Num({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone: Tone | "ink" }) {
+/** The one number the row is about: 30 px condensed, with its label above and the rule in words beneath. */
+function Lead({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone: Tone | "ink" }) {
   return (
     <div className="min-w-0">
-      <div className="label truncate">{label}</div>
+      <div className="label">{label}</div>
       <div className={`display mt-1 text-[30px] ${tone === "ok" ? "" : toneCls(tone)}`}>{value}</div>
-      {sub && <div className="mt-1.5 text-[11px] leading-snug ink-3">{sub}</div>}
+      {sub && <div className="mt-1 text-[11px] leading-snug ink-3">{sub}</div>}
+    </div>
+  );
+}
+/** Context figures: one line each, label left, figure right, no display size. */
+function Fig({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone: Tone | "ink" }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 text-xs">
+      <span className="ink-3">{label}{sub ? <span className="ink-4"> · {sub}</span> : null}</span>
+      <span className={`num shrink-0 text-[13px] ${tone === "ok" || tone === "muted" ? "" : toneCls(tone)}`}>{value}</span>
     </div>
   );
 }
@@ -83,7 +93,7 @@ export function Board({ fleet, visits, exceptions, assignments, charges, selecte
 
   return (
     <section>
-      <div className="mb-2 flex items-baseline justify-between"><h2 className="h">Board</h2><span className="label">{rows.length} trucks · ranked by urgency · select a row</span></div>
+      <div className="mb-2 flex items-baseline justify-between"><h2 className="h">Board</h2><span className="label">{rows.length} trucks · most urgent first</span></div>
       <div className="rule-t">
         {rows.length === 0 && <p className="py-3 text-sm ink-3">No telemetry yet.</p>}
         {rows.map((r) => {
@@ -120,22 +130,38 @@ export function Board({ fleet, visits, exceptions, assignments, charges, selecte
               )}
 
               {open && (
-                <div className="mt-4 grid grid-cols-3 gap-4 pr-3">
-                  {v ? (
+                <div className="mt-4 grid gap-5 pr-3" style={{ gridTemplateColumns: "minmax(0,1.1fr) minmax(0,1fr)" }}>
+                  {v ? (() => {
+                    const bill = {
+                      label: clockPending ? "Billing clock" : "Billable in",
+                      value: clockPending ? `starts ${hhmm(v.clock_start_ts)}` : mtb == null ? `${fmtMin(v.qualifying_dwell_min - v.policy.free_time_min)} · $${v.amount_so_far.toFixed(0)}` : fmtMin(mtb),
+                      sub: clockPending ? `early for the ${hhmm(v.timestamps.appointment_start_ts ?? v.clock_start_ts)} appointment · free ${v.policy.free_time_min} min after` : `clock from ${hhmm(v.clock_start_ts)} ${TZ} · free ${v.policy.free_time_min} min · $${v.policy.rate_per_hour}/h`,
+                      tone: (clockPending ? "muted" : mtb == null ? "warn" : mtb <= 30 ? "warn" : "ink") as Tone | "ink",
+                    };
+                    const hos = {
+                      label: "Hours to a legal stop",
+                      value: m == null ? "no log" : fmtH(m),
+                      sub: v.hos ? `after ~${Math.round(v.hos.wait_more_min)} min more waiting + ${v.hos.drive_to_safe_h} h drive · ${v.hos.binding}` : undefined,
+                      tone: (m == null ? "muted" : m < 0 ? "bad" : m < 0.5 ? "warn" : "ink") as Tone | "ink",
+                    };
+                    const lead = deadlineBinding === "hos" ? hos : bill;
+                    const other = deadlineBinding === "hos" ? bill : hos;
+                    return (
+                      <>
+                        <Lead {...lead} />
+                        <div className="space-y-1.5 self-end">
+                          <Fig {...other} />
+                          <Fig label="Waiting" value={fmtMin(v.physical_dwell_min)} sub={`since ${hhmm(v.timestamps.property_entered_ts)} ${TZ}`} tone="muted" />
+                        </div>
+                      </>
+                    );
+                  })() : (
                     <>
-                      <Num label={clockPending ? "Billing clock" : "Billable in"} value={clockPending ? `starts ${hhmm(v.clock_start_ts)}` : mtb == null ? `${fmtMin(v.qualifying_dwell_min - v.policy.free_time_min)} · $${v.amount_so_far.toFixed(0)}` : fmtMin(mtb)}
-                        sub={clockPending ? `early for the ${hhmm(v.timestamps.appointment_start_ts ?? v.clock_start_ts)} appointment · free ${v.policy.free_time_min} min after` : `clock from ${hhmm(v.clock_start_ts)} ${TZ} · free ${v.policy.free_time_min} min · $${v.policy.rate_per_hour}/h`}
-                        tone={clockPending ? "muted" : mtb == null ? "warn" : mtb <= 30 ? "warn" : deadlineBinding === "bill" ? "ink" : "muted"} />
-                      <Num label="Hours to a legal stop" value={m == null ? "no log" : fmtH(m)}
-                        sub={v.hos ? `after ~${Math.round(v.hos.wait_more_min)} min more waiting + ${v.hos.drive_to_safe_h} h drive · ${v.hos.binding}` : undefined}
-                        tone={m == null ? "muted" : m < 0 ? "bad" : m < 0.5 ? "warn" : deadlineBinding === "hos" ? "ink" : "muted"} />
-                      <Num label="Waiting" value={fmtMin(v.physical_dwell_min)} sub={`since ${hhmm(v.timestamps.property_entered_ts)} ${TZ}`} tone="muted" />
-                    </>
-                  ) : (
-                    <>
-                      <Num label="On duty left" value={r.fleet.hos ? fmtH(r.fleet.hos.remaining_onduty_h) : "no log"} sub={r.fleet.hos?.binding} tone={r.fleet.hos && r.fleet.hos.remaining_onduty_h < 1.5 ? "bad" : "ink"} />
-                      <Num label="Drive left" value={r.fleet.hos ? fmtH(r.fleet.hos.remaining_drive_h) : "—"} tone="muted" />
-                      <Num label="Speed" value={`${Math.round(r.fleet.speed_kmh ?? 0)} km/h`} sub={r.fleet.odometer_km != null ? `${r.fleet.odometer_km} km today` : undefined} tone="muted" />
+                      <Lead label="On duty left" value={r.fleet.hos ? fmtH(r.fleet.hos.remaining_onduty_h) : "no log"} sub={r.fleet.hos?.binding} tone={r.fleet.hos && r.fleet.hos.remaining_onduty_h < 1.5 ? "bad" : "ink"} />
+                      <div className="space-y-1.5 self-end">
+                        <Fig label="Drive left" value={r.fleet.hos ? fmtH(r.fleet.hos.remaining_drive_h) : "—"} tone="muted" />
+                        <Fig label="Speed" value={`${Math.round(r.fleet.speed_kmh ?? 0)} km/h`} sub={r.fleet.odometer_km != null ? `${r.fleet.odometer_km} km today` : undefined} tone="muted" />
+                      </div>
                     </>
                   )}
                 </div>
