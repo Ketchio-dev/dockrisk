@@ -20,6 +20,7 @@ services/core/geofence.py   property + dock polygons, debounce, jitter tolerance
 services/core/visits.py     facility-visit state machine, detention policy engine, evidence packet, replay-safe charges
 services/core/matching.py   next-load rescue: eligibility filters + ranked candidates with reasons
 services/core/backtest.py   history replay: charges over the export window, 30-min warning scored out of sample, anonymized
+services/core/notice.py     customer detention notice drafted from the evidence packet (LLM with a template fallback; numbers stay the engine's)
 services/api/main.py        FastAPI: ingest telemetry/duty, visits, charges, exceptions, HOS, rescue, snapshot + SSE stream
 services/sim/main.py        separate simulator: one virtual clock, OSRM road geometry, scripted dock dwell + 401 slowdown
 apps/web                    Next.js: dispatcher dashboard (map + satellite toggle, exception inbox, three clocks) and driver ELD-companion view
@@ -85,3 +86,11 @@ Say *exposure*. The export has no billing records, so nothing here shows what wa
   charge against one goes to review.
 - Leg-level HOS columns in the export are frozen per-driver copies; HOS is joined from the driver sheet.
 - s.76 adverse driving conditions are surfaced as "possible, review required", never applied.
+
+## Deploying (public backup URL)
+
+`services/Dockerfile` builds the API and simulator into one image on the **synthetic sample** — the organizer
+workbook and the local database are git- and docker-ignored, so a public deployment never carries real customer
+names. Run it anywhere that takes a container (Fly.io, Railway, Render), set `NEXT_PUBLIC_API_URL` to its URL and
+deploy `apps/web` to Vercel. The LLM features read `OPENAI_BASE_URL` / `OPENAI_API_KEY` /
+`DOCKRISK_EXTRACT_PROVIDER` / `DOCKRISK_EXTRACT_MODEL` from the environment and fall back to rules when absent.

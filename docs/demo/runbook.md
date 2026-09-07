@@ -3,6 +3,13 @@
 Rehearse this twice on Sat Sep 12 and once on Sun morning. Every number below is what the deterministic
 scenario (`dock_squeeze`, seed 7) produces; if a number differs on stage, say so and keep going.
 
+## The AI moments, named
+
+Two places, both labeled on screen, both with a deterministic fallback so the demo cannot die on a proxy:
+`/policies` reads a rate confirmation into terms with the quoted clause under each field; the evidence packet's
+**Draft the notice** button writes the customer letter from the packet. Say the sentence once: *"The model reads
+and writes language. The engine computes every number, and the dispatcher confirms before anything leaves."*
+
 ## Before the room
 
 - `scripts/demo.sh 60` on the presentation laptop; open **two browser tabs**: `/` (dispatcher) and

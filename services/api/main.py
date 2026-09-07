@@ -17,6 +17,7 @@ from sse_starlette.sse import EventSourceResponse
 
 from core.analytics import build_dwell_history, build_dwell_model, exposure_summary, predict_remaining
 from core.backtest import replay
+from core.notice import draft_notice
 from core.db import DB_PATH, connect, init_schema
 from core.geofence import GeofenceIndex, GeofenceTracker
 from core.hos import DutyEvent, PlanStep, check_plan, compute_clocks, cycle_note, departure_margin, norm_cycle, recent_segments, seed_history_from_snapshot
@@ -585,6 +586,19 @@ def visit_finalize(visit_id: int):
 @app.get("/visits/{visit_id}/evidence")
 def visit_evidence(visit_id: int):
     return S.visits.evidence_packet(visit_id, S.visits.compute(S.visits.get(visit_id), now_sim()))
+
+
+class NoticeIn(BaseModel):
+    prefer_llm: bool = True
+
+
+@app.post("/visits/{visit_id}/notice")
+def visit_notice(visit_id: int, body: NoticeIn | None = None):
+    """Draft the customer detention notice from the evidence packet. The engine's numbers are authoritative; the
+    model (or the template) only writes the prose. Labeled by source; a dispatcher edits before sending."""
+    packet = S.visits.evidence_packet(visit_id, S.visits.compute(S.visits.get(visit_id), now_sim()))
+    d = draft_notice(packet, prefer_llm=(body.prefer_llm if body else True))
+    return {"visit_id": visit_id, **d.model_dump()}
 
 
 @app.get("/charges")

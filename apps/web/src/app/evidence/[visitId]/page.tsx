@@ -20,6 +20,42 @@ const t = (ts: string | number | null | undefined) => (ts ? String(ts).slice(11,
 const ms = (s: string | number | null | undefined) => (s ? new Date(String(s).replace(" ", "T")).getTime() : NaN);
 function localIso(d: Date) { const p = (n: number) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`; }
 
+type NoticeDraft = { notice: { subject: string; body: string; facts_used: string[]; caveats: string[] }; source: "drafted-llm" | "drafted-template"; provider: string | null; model: string | null; warning: string | null };
+
+/** The notice to the customer: drafted from the packet on request, shown in an editable box, labelled by who wrote it. */
+function NoticeBlock({ visitId }: { visitId: string }) {
+  const [d, setD] = useState<NoticeDraft | null>(null);
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const draft = async () => {
+    setBusy(true);
+    try { const r = await api<NoticeDraft>(`/visits/${visitId}/notice`, { method: "POST", body: JSON.stringify({ prefer_llm: true }) }); setD(r); setText(`${r.notice.subject}\n\n${r.notice.body}`); }
+    finally { setBusy(false); }
+  };
+  const copy = async () => { try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* clipboard blocked: the text is selectable */ } };
+  return (
+    <section className="no-print mb-7">
+      <div className="mb-2 flex items-baseline justify-between">
+        <h2 className="h">Notice to the customer</h2>
+        {d ? <span className="label">{d.source === "drafted-llm" ? `drafted by ${d.model ?? d.provider}` : "from the template"} · edit before sending</span> : <span className="label">drafted from this packet; the numbers come from the engine</span>}
+      </div>
+      {!d && <button disabled={busy} onClick={draft} className="btn">{busy ? "Drafting…" : "Draft the notice"}</button>}
+      {d && (
+        <>
+          {d.warning && <p className="mb-2 text-xs t-warn">{d.warning}</p>}
+          <textarea value={text} onChange={(e) => setText(e.target.value)} rows={16} className="field w-full text-[13px]" />
+          {d.notice.caveats.length > 0 && <p className="mt-1 text-xs ink-3">Before sending, confirm: {d.notice.caveats.join("; ")}.</p>}
+          <div className="mt-2 flex items-center gap-2">
+            <button onClick={copy} className="btn btn-sm btn-primary">{copied ? "Copied" : "Copy"}</button>
+            <button disabled={busy} onClick={draft} className="btn btn-sm">Draft again</button>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
 export default function Evidence({ params }: { params: Promise<{ visitId: string }> }) {
   const { visitId } = use(params);
   const [p, setP] = useState<Packet | null>(null);
@@ -90,6 +126,8 @@ export default function Evidence({ params }: { params: Promise<{ visitId: string
           <p className="mt-3 text-xs ink-3">Evidence confidence {c.confidence} · facility outline: {String(p.facility.source)}{Number(p.facility.confidence) < 0.9 ? " (not surveyed)" : ""}</p>
         </section>
       )}
+
+      {c && <NoticeBlock visitId={visitId} />}
 
       <section className="mb-7">
         <h2 className="h mb-2">Timeline</h2>

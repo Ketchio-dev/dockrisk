@@ -1,0 +1,12 @@
+**/node_modules
+**/.next
+**/.venv
+**/__pycache__
+data/portal-downloads
+data/geo
+*.db
+*.db-journal
+apps/web/.tile-cache
+.git
+.demo-logs
+.logs

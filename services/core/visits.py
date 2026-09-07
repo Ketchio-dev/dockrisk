@@ -226,7 +226,7 @@ class VisitEngine:
             elif visit["on_time"] is None and at_risk:
                 reasons.append("on-time status not confirmed by driver")
         if not checked and at_risk and rule == "max_checkin_appointment":
-            reasons.append("no check-in confirmation; clock started at property entry")
+            reasons.append("no check-in confirmation; clock started at the later of property entry and appointment")
         if closed and not exited:
             reasons.append("no gate-exit evidence; clock ended at release")
         if (fac.get("confidence") or 0) < 0.6:
