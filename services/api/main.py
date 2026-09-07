@@ -806,6 +806,8 @@ class AssignIn(BaseModel):
 
 @app.post("/assignments")
 def assign(a: AssignIn):
+    if not row("SELECT 1 FROM orders WHERE bill_number=?", a.bill_number):
+        raise HTTPException(404, f"unknown bill {a.bill_number}")
     ts = now_sim().isoformat(sep=" ")
     if a.status in ("offered", "accepted"):
         S.conn.execute("UPDATE assignments SET status='superseded', updated_ts=? WHERE bill_number=? AND status IN ('proposed','offered','accepted')", (ts, a.bill_number))

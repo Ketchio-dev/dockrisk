@@ -331,7 +331,12 @@ class Sim:
             if not acc:
                 continue
             a = acc[0]
-            o = self.get(f"/orders/{a['bill_number']}")
+            try:
+                o = self.get(f"/orders/{a['bill_number']}")
+            except httpx.HTTPStatusError as e:
+                # an accepted assignment for a bill the export does not have: nothing to drive to; leave the truck on standby
+                print(f"[{self.t:%H:%M}] !! {tr.unit} accepted {a['bill_number']} but the order is unknown ({e.response.status_code}); staying on standby", flush=True)
+                continue
             fac_o = {"facility_id": None, "name": f"{o['orig_city']} pickup", "lat": o["orig_lat"], "lon": o["orig_lon"], "city": o["orig_city"]}
             fac_d = {"facility_id": None, "name": f"{o['dest_city']} delivery", "lat": o["dest_lat"], "lon": o["dest_lon"], "city": o["dest_city"]}
             pbe = a.get("pickup_by_end")
