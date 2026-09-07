@@ -16,8 +16,8 @@ export type FleetRow = {
 export type Prediction = { grain: string | null; n: number; p_over_free?: number; median_remaining_min?: number; p90_remaining_min?: number; note?: string };
 export type PlanCheck = { feasible: boolean; margin_h: number; breaks_at: string | null; binding: string };
 export type VisitHos = {
-  wait_more_min: number; drive_to_safe_h: number; margin_h: number; binding: string; feasible: boolean; first_violation: string | null;
-  next_load?: { at_arrival: PlanCheck; with_predicted_wait: PlanCheck; without_more_wait: PlanCheck; drive_to_pickup_h: number; line_haul_h: number; verdict: string };
+  wait_more_min: number; drive_to_safe_h: number; road_extra_h: number; road_events: string[]; margin_h: number; binding: string; feasible: boolean; first_violation: string | null;
+  next_load?: { at_arrival: PlanCheck; with_predicted_wait: PlanCheck; without_more_wait: PlanCheck; with_clear_road: PlanCheck; road_extra_h: number; road_events: string[]; drive_to_pickup_h: number; line_haul_h: number; verdict: string };
 };
 export type Visit = {
   visit_id: number; state: string; unit: string; driver_name: string | null; facility_id: number; bill_number: string | null; stop_kind: string;
@@ -46,7 +46,7 @@ export type Facility = {
   facility_id: number; name: string; customer: string | null; city: string; lat: number; lon: number; source: string; confidence: number;
   property_polygon_geojson: { coordinates: number[][][] } | null; dock_polygon_geojson: { coordinates: number[][][] } | null;
 };
-export type Candidate = { driver_name: string; unit: string; eligible: boolean; deadhead_km: number; eta: string; hos_margin_h: number; reasons: string[]; blockers: string[] };
+export type Candidate = { driver_name: string; unit: string; eligible: boolean; deadhead_km: number; eta: string; hos_margin_h: number; road_extra_h: number; road_events: string[]; reasons: string[]; blockers: string[] };
 export type Exposure = {
   n?: number; window_days: number; window: string[]; monthly_exposure_low: number; monthly_exposure_high: number; total_billable_hours: number;
   by_kind: Record<string, { n: number; median_min: number; p90_min: number; over_free_n: number; over_free_pct: number; within_10min_of_threshold_n: number; billable_hours: number }>;

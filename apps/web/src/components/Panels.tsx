@@ -74,7 +74,7 @@ export function RescuePanel({ bill, excludeDriver, onClose }: { bill: string; ex
             {data.candidates.map((c) => (
               <li key={c.driver_name} className={`flex items-center justify-between gap-3 rule-b py-2.5 pl-3 text-sm ${c.eligible ? "bar-ok" : "bar-none opacity-70"}`}>
                 <div>
-                  <div className="font-medium">{c.driver_name} <span className="mono ink-3 font-normal">{c.unit}</span> <span className="num ml-2 text-xs ink-3">{c.deadhead_km} km · ETA {hhmm(c.eta)} · hours margin {fmtH(c.hos_margin_h)}</span></div>
+                  <div className="font-medium">{c.driver_name} <span className="mono ink-3 font-normal">{c.unit}</span> <span className="num ml-2 text-xs ink-3">{c.deadhead_km} km · ETA {hhmm(c.eta)}{c.road_extra_h > 0 && <span className="t-warn"> (+{Math.round(c.road_extra_h * 60)} min road)</span>} · hours margin {fmtH(c.hos_margin_h)}</span></div>
                   <div className="text-xs ink-3">{c.reasons.filter((r) => !/^deadhead/.test(r)).map((r) => r.replace("trailer unknown ok", "trailer not on file")).join(" · ")}</div>
                   {c.blockers.length > 0 && <div className="text-xs t-bad">{c.blockers.join(" · ")}</div>}
                 </div>

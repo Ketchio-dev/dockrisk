@@ -19,6 +19,7 @@ services/core/hos.py        Canadian HOS (SOR/2005-313): 13/14/16 h, 10 h off + 
 services/core/geofence.py   property + dock polygons, debounce, jitter tolerance; centroid fallback marked low-confidence
 services/core/visits.py     facility-visit state machine, detention policy engine, evidence packet, replay-safe charges
 services/core/matching.py   next-load rescue: eligibility filters + ranked candidates with reasons
+services/core/road.py       road events on a leg: closure circles x speed factor -> extra hours; feeds the HOS forward check and the rescue ranking
 services/core/backtest.py   history replay: charges over the export window, 30-min warning scored out of sample, anonymized
 services/core/notice.py     customer detention notice drafted from the evidence packet (LLM with a template fallback; numbers stay the engine's)
 services/api/main.py        FastAPI: ingest telemetry/duty, visits, charges, exceptions, HOS, rescue, snapshot + SSE stream

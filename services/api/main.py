@@ -22,6 +22,7 @@ from core.db import DB_PATH, connect, init_schema
 from core.geofence import GeofenceIndex, GeofenceTracker
 from core.hos import DutyEvent, PlanStep, check_plan, compute_clocks, cycle_note, departure_margin, norm_cycle, recent_segments, seed_history_from_snapshot
 from core.matching import haversine_km, rank_candidates
+from core.road import Closure, leg_delay
 from core.visits import VisitEngine
 
 TERMINAL_STATES = ("CHARGE_READY", "REVIEW_REQUIRED")
@@ -489,12 +490,31 @@ def hos_check(driver: str, p: PlanIn):
             "adverse_conditions_note": f.adverse_conditions_note, "clocks_after": f.clocks_after.as_dict()}
 
 
-# ---------------- visits, charges, exceptions ----------------
-def drive_to_safe_h(facility_id: int) -> float:
+def active_closures() -> list[Closure]:
+    """Open closure exceptions as geometry. The simulator's scripted event carries a speed factor; live 511
+    items carry lanes/full_closure, from which a factor is derived (full closure 0.3, lanes 0.6, else 0.8).
+    The label is the road and direction only — the full description stays on the exception."""
+    out = []
+    for e in rows("SELECT exception_id, title, detail_json FROM exceptions WHERE status='open' AND kind='closure'"):
+        d = json.loads(e["detail_json"] or "{}")
+        if not isinstance(d.get("lat"), (int, float)):
+            continue
+        f = d.get("speed_factor")
+        if f is None:
+            f = 0.3 if d.get("full_closure") else 0.6 if d.get("lanes") else 0.8
+        label = e["title"].replace("[511 live] ", "").split(":")[0].strip() or str(d.get("id") or e["exception_id"])
+        out.append(Closure(str(d.get("id") or e["exception_id"]), d["lat"], d["lon"], float(d.get("radius_km") or 8), float(f), label))
+    return out
+
+
+def drive_to_safe_h(facility_id: int, closures: list[Closure] | None = None) -> dict:
+    """Hours from this facility to the nearest terminal (Milton): the base estimate and the road-event surcharge."""
     f = row("SELECT lat, lon FROM facilities WHERE facility_id=?", facility_id)
     term = row("SELECT lat, lon FROM facilities WHERE city='MILTON' ORDER BY confidence DESC LIMIT 1") or {"lat": 43.5183, "lon": -79.8774}
     km = haversine_km(f["lat"], f["lon"], term["lat"], term["lon"]) if f else 60
-    return round(max(0.25, km / 75.0 + 0.15), 2)
+    base = round(max(0.25, km / 75.0 + 0.15), 2)
+    road = leg_delay(f["lat"], f["lon"], term["lat"], term["lon"], closures or [], kmh=75.0) if f else {"extra_h": 0.0, "affected_km": 0.0, "closures": []}
+    return {"base_h": base, "road_extra_h": road["extra_h"], "h": round(base + road["extra_h"], 2), "closures": [c.title or c.id for c in road["closures"]]}
 
 
 def visit_detail(visit_id: int, now: datetime) -> dict:
@@ -505,12 +525,14 @@ def visit_detail(visit_id: int, now: datetime) -> dict:
     pred = predict_remaining(S.conn, v.get("bill_number") and (row("SELECT customer FROM orders WHERE bill_number=?", v["bill_number"]) or {}).get("customer"),
                              fac["city"] if fac else None, v["stop_kind"] if v["stop_kind"] in ("pickup", "delivery") else "delivery", elapsed) if v["state"] not in TERMINAL_STATES else None
     hos_margin = None
+    closures = active_closures()
     if v["driver_name"] and duty_log(v["driver_name"]) and v["state"] not in TERMINAL_STATES:
         wait_more = (pred or {}).get("median_remaining_min") or 30
         d = row("SELECT cycle FROM drivers WHERE name=?", v["driver_name"])
-        f = departure_margin(duty_log(v["driver_name"]), now, wait_more / 60, drive_to_safe_h(v["facility_id"]), norm_cycle((d or {}).get("cycle")))
-        hos_margin = {"wait_more_min": wait_more, "drive_to_safe_h": drive_to_safe_h(v["facility_id"]), "margin_h": f.margin_h, "binding": f.binding,
-                      "feasible": f.feasible, "first_violation": f.first_violation}
+        safe = drive_to_safe_h(v["facility_id"], closures)
+        f = departure_margin(duty_log(v["driver_name"]), now, wait_more / 60, safe["h"], norm_cycle((d or {}).get("cycle")))
+        hos_margin = {"wait_more_min": wait_more, "drive_to_safe_h": safe["h"], "road_extra_h": safe["road_extra_h"], "road_events": safe["closures"],
+                      "margin_h": f.margin_h, "binding": f.binding, "feasible": f.feasible, "first_violation": f.first_violation}
     nxt = row("""SELECT a.bill_number, o.orig_city, o.dest_city, o.orig_lat, o.orig_lon, o.dest_lat, o.dest_lon,
                         COALESCE(json_extract(a.reason_json,'$.pickup_by_start'), l.pickup_by_start) pickup_by_start,
                         COALESCE(json_extract(a.reason_json,'$.pickup_by_end'), l.pickup_by_end) pickup_by_end
@@ -518,25 +540,35 @@ def visit_detail(visit_id: int, now: datetime) -> dict:
                  WHERE a.driver_name=? AND a.status IN ('offered','accepted') AND a.bill_number<>IFNULL(?, '') ORDER BY a.assignment_id DESC LIMIT 1""",
               v["driver_name"], v["bill_number"])
     if nxt and hos_margin and nxt.get("orig_lat"):
-        # the actual next commitment: drive to its pickup, load, line-haul, unload — with vs without the predicted extra wait
+        # the actual next commitment: drive to its pickup, load, line-haul, unload — with vs without the predicted extra wait.
+        # Each drive carries the road-event surcharge for the closures it crosses.
         f = row("SELECT lat, lon FROM facilities WHERE facility_id=?", v["facility_id"])
-        to_pick = haversine_km(f["lat"], f["lon"], nxt["orig_lat"], nxt["orig_lon"]) * 1.25 / 75.0
-        haul = (haversine_km(nxt["orig_lat"], nxt["orig_lon"], nxt["dest_lat"], nxt["dest_lon"]) * 1.25 / 75.0) if nxt.get("dest_lat") else 1.5
+        to_pick_road = leg_delay(f["lat"], f["lon"], nxt["orig_lat"], nxt["orig_lon"], closures, kmh=75.0)
+        to_pick = haversine_km(f["lat"], f["lon"], nxt["orig_lat"], nxt["orig_lon"]) * 1.25 / 75.0 + to_pick_road["extra_h"]
+        haul_road = leg_delay(nxt["orig_lat"], nxt["orig_lon"], nxt["dest_lat"], nxt["dest_lon"], closures, kmh=75.0) if nxt.get("dest_lat") else {"extra_h": 0.0, "closures": []}
+        haul = (haversine_km(nxt["orig_lat"], nxt["orig_lon"], nxt["dest_lat"], nxt["dest_lon"]) * 1.25 / 75.0 + haul_road["extra_h"]) if nxt.get("dest_lat") else 1.5
+        road_extra = round(to_pick_road["extra_h"] + haul_road["extra_h"], 2)
+        road_events = sorted({c.title or c.id for c in to_pick_road["closures"] + haul_road["closures"]})
         d = row("SELECT cycle FROM drivers WHERE name=?", v["driver_name"])
-        def plan(wait_h, as_of):
+        def plan(wait_h, as_of, road=True):
+            """The forward plan; road=False removes the surcharge to show what a clear road would have allowed."""
             steps = ([PlanStep("on_duty", wait_h, "remaining dock wait")] if wait_h > 0 else []) + [
-                PlanStep("driving", to_pick, "to next pickup"), PlanStep("on_duty", 0.75, "load"), PlanStep("driving", haul, "line haul"), PlanStep("on_duty", 0.75, "unload")]
+                PlanStep("driving", to_pick - (0 if road else to_pick_road["extra_h"]), "to next pickup"), PlanStep("on_duty", 0.75, "load"),
+                PlanStep("driving", haul - (0 if road else haul_road["extra_h"]), "line haul"), PlanStep("on_duty", 0.75, "unload")]
             return check_plan(duty_log(v["driver_name"]), as_of, steps, norm_cycle((d or {}).get("cycle")))
         entered = datetime.fromisoformat(v["property_entered_ts"] or v["approach_ts"])
         at_arrival = plan(0, entered)                                   # baseline: had the truck been released on arrival
         without = plan(0, now)                                          # released right now
         with_wait = plan(hos_margin["wait_more_min"] / 60, now)         # released after the predicted remaining wait
+        clear_road = plan(hos_margin["wait_more_min"] / 60, now, road=False) if road_extra > 0 else with_wait   # same, had the road been clear
         pc = lambda f: {"feasible": f.feasible, "margin_h": f.margin_h, "breaks_at": f.at_step, "binding": f.binding}
         verdict = ("infeasible even at arrival — not a detention problem" if not at_arrival.feasible
                    else "the wait so far has already made it infeasible" if not without.feasible
+                   else "the road delay on top of the predicted wait makes it infeasible" if not with_wait.feasible and clear_road.feasible
                    else "the predicted remaining wait makes it infeasible" if not with_wait.feasible
                    else "feasible")
         hos_margin["next_load"] = {"at_arrival": pc(at_arrival), "without_more_wait": pc(without), "with_predicted_wait": pc(with_wait),
+                                   "with_clear_road": pc(clear_road), "road_extra_h": road_extra, "road_events": road_events,
                                    "drive_to_pickup_h": round(to_pick, 2), "line_haul_h": round(haul, 2), "verdict": verdict}
         nxt = {k: nxt[k] for k in ("bill_number", "orig_city", "dest_city", "pickup_by_start", "pickup_by_end")}
     return {**clocks, "facility": fac, "events": rows("SELECT * FROM visit_events WHERE visit_id=? ORDER BY ts, event_id", visit_id),
@@ -674,8 +706,9 @@ def refresh_exceptions():
         h = d["hos"]
         if h and h["margin_h"] < 0.5:
             sev = "critical" if h["margin_h"] < 0 else "warn"
+            road = f" (of which {h['road_extra_h'] * 60:.0f} min is road: {', '.join(h['road_events'])})" if h.get("road_extra_h") else ""
             upsert_exception("hos_margin", sev, unit, drv, vid, bill,
-                             f"{drv}: departure margin {h['margin_h']:+.1f} h after predicted wait ({h['wait_more_min']:.0f} min) + {h['drive_to_safe_h']} h to a legal stop — {h['binding']}",
+                             f"{drv}: departure margin {h['margin_h']:+.1f} h after predicted wait ({h['wait_more_min']:.0f} min) + {h['drive_to_safe_h']} h to a legal stop{road} — {h['binding']}",
                              h, ["direct driver to safe parking now" if h["margin_h"] >= 0 else "no legal continuation: escalate", "reassign next load"])
         nxt = d["next_load"]
         if nxt and h:
@@ -713,10 +746,10 @@ def refresh_exceptions():
                          ["re-estimate ETAs in the corridor", "s.76 adverse-conditions extension: review, not assumed"])
     keep = {str(inc["id"]) for _, inc, _ in sorted(scored, key=lambda x: x[0])[:3]}
     for e in rows("SELECT exception_id, json_extract(detail_json,'$.id') i, json_extract(detail_json,'$.source') src FROM exceptions WHERE status='open' AND kind='closure'"):
-        if e["src"] and "511" in str(e["src"]) and e["i"] and e["i"] not in keep:
+        if e["src"] == "Ontario 511 (live)" and e["i"] and e["i"] not in keep:   # only the poller's own rows; the scenario's corridor event stays until it expires
             S.conn.execute("UPDATE exceptions SET status='resolved', resolved_ts=?, resolution='no longer near a tracked truck' WHERE exception_id=?", (now.isoformat(sep=" "), e["exception_id"]))
     S.conn.execute("""UPDATE exceptions SET status='resolved', resolved_ts=?, resolution='expired' WHERE status='open' AND kind='closure'
-                      AND julianday(?) - julianday(sim_ts) > 2.0/24""", (now.isoformat(sep=" "), now.isoformat(sep=" ")))
+                      AND json_extract(detail_json,'$.source')='Ontario 511 (live)' AND julianday(?) - julianday(sim_ts) > 2.0/24""", (now.isoformat(sep=" "), now.isoformat(sep=" ")))
     # resolve exceptions whose visit closed
     S.conn.execute("""UPDATE exceptions SET status='resolved', resolved_ts=?, resolution='visit closed' WHERE status='open' AND visit_id IS NOT NULL
                       AND visit_id IN (SELECT visit_id FROM stop_visits WHERE state IN ('CHARGE_READY','REVIEW_REQUIRED'))""", (now.isoformat(sep=" "),))
@@ -835,7 +868,7 @@ def rescue(bill_number: str, exclude_driver: str | None = None):
         cands.append({"driver_name": t["driver_name"], "unit": t["unit"], "lat": t["lat"], "lon": t["lon"], "status": d.get("status"), "cycle": norm_cycle(d.get("cycle")),
                       "trailer_type": tr.get("trailer_type"), "trailer_capacity_lbs": tr.get("capacity_lbs"), "busy_until": busy_until})
     logs = {c["driver_name"]: duty_log(c["driver_name"]) for c in cands}
-    ranked = rank_candidates(now, load, cands, logs, exclude={exclude_driver} if exclude_driver else set())
+    ranked = rank_candidates(now, load, cands, logs, exclude={exclude_driver} if exclude_driver else set(), closures=active_closures())
     return {"bill_number": bill_number, "load": {k: (v.isoformat(sep=" ") if isinstance(v, datetime) else v) for k, v in load.items()},
             "candidates": ranked, "note": "eligibility filters + ranking with reasons; no legal candidate means exactly that"}
 

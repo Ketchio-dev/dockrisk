@@ -7,6 +7,7 @@ import math
 from datetime import datetime, timedelta
 
 from core.hos import DutyEvent, PlanStep, check_plan
+from core.road import Closure, leg_delay
 
 AVG_KMH = 75.0
 SERVICE_H = 0.75
@@ -23,10 +24,16 @@ def haversine_km(lat1, lon1, lat2, lon2) -> float:
 
 
 def rank_candidates(now: datetime, load: dict, candidates: list[dict], duty_logs: dict[str, list[DutyEvent]],
-                    exclude: set[str] = frozenset()) -> list[dict]:
+                    exclude: set[str] = frozenset(), closures: list[Closure] = ()) -> list[dict]:
     """load: {bill_number, orig_lat, orig_lon, dest_lat, dest_lon, pickup_by_end, load_type, weight_lbs, distance_km}
-    candidates: [{driver_name, unit, lat, lon, status, cycle, trailer_type, trailer_capacity_lbs, busy_until}]"""
+    candidates: [{driver_name, unit, lat, lon, status, cycle, trailer_type, trailer_capacity_lbs, busy_until}]
+    closures: open road events; each candidate's deadhead and the shared line haul pay for the ones they cross."""
     out = []
+    # line-haul estimate: great-circle x 1.25 road factor. The export's DISTANCE is trip-level and often multi-stop.
+    gc = haversine_km(load.get("orig_lat"), load.get("orig_lon"), load.get("dest_lat"), load.get("dest_lon"))
+    loaded_km = gc * 1.25 if gc != float("inf") else (load.get("distance_km") or 200)
+    haul_road = leg_delay(load.get("orig_lat"), load.get("orig_lon"), load.get("dest_lat"), load.get("dest_lon"), list(closures), AVG_KMH) if gc != float("inf") else {"extra_h": 0.0, "closures": []}
+    loaded_h = loaded_km / AVG_KMH + haul_road["extra_h"]
     for c in candidates:
         if c["driver_name"] in exclude:
             continue
@@ -36,11 +43,12 @@ def rank_candidates(now: datetime, load: dict, candidates: list[dict], duty_logs
             hard_fail.append("no known position")
             dead_km = 9999
         dead_km = dead_km * 1.25 if dead_km < 9000 else dead_km   # same road factor as the loaded leg
-        dead_h = dead_km / AVG_KMH
-        # line-haul estimate: great-circle x 1.25 road factor. The export's DISTANCE is trip-level and often multi-stop.
-        gc = haversine_km(load.get("orig_lat"), load.get("orig_lon"), load.get("dest_lat"), load.get("dest_lon"))
-        loaded_km = gc * 1.25 if gc != float("inf") else (load.get("distance_km") or 200)
-        loaded_h = loaded_km / AVG_KMH
+        dead_road = leg_delay(c.get("lat"), c.get("lon"), load.get("orig_lat"), load.get("orig_lon"), list(closures), AVG_KMH) if dead_km < 9000 else {"extra_h": 0.0, "closures": []}
+        dead_h = dead_km / AVG_KMH + dead_road["extra_h"]
+        road_extra_h = round(dead_road["extra_h"] + haul_road["extra_h"], 2)
+        road_events = sorted({x.title or x.id for x in dead_road["closures"] + haul_road["closures"]})
+        if road_extra_h > 0:
+            reasons.append(f"road: +{road_extra_h * 60:.0f} min through {', '.join(road_events)}")
         if c.get("status") in ("VACATION", "OFF", "SICK"):
             hard_fail.append(f"driver status {c['status']}")
         if c.get("busy_until") and c["busy_until"] > now:
@@ -74,6 +82,7 @@ def rank_candidates(now: datetime, load: dict, candidates: list[dict], duty_logs
             margin = -99
         out.append({"driver_name": c["driver_name"], "unit": c.get("unit"), "eligible": not hard_fail,
                     "deadhead_km": round(dead_km, 1), "eta": eta.isoformat(sep=" "), "hos_margin_h": margin,
+                    "road_extra_h": road_extra_h, "road_events": road_events,
                     "reasons": reasons, "blockers": hard_fail,
                     "score": (0 if hard_fail else 1) * 1000 - dead_km + 10 * max(0, min(margin, 5))})
     out.sort(key=lambda x: -x["score"])

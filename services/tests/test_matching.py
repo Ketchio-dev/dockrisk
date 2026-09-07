@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 
 from core.hos import DutyEvent
 from core.matching import rank_candidates
+from core.road import Closure
 
 T0 = datetime(2026, 9, 8, 12, 0)
 
@@ -34,3 +35,17 @@ def test_no_duty_history_is_a_blocker_not_a_guess():
     load = {"bill_number": "1", "orig_lat": 42.98, "orig_lon": -81.25, "dest_lat": 43.52, "dest_lon": -79.88, "pickup_by_end": None}
     r = rank_candidates(T0, load, [{"driver_name": "x", "unit": "X", "lat": 43.0, "lon": -81.2, "cycle": 1}], {})
     assert not r[0]["eligible"] and "no duty history" in r[0]["blockers"][0]
+
+
+def test_a_closure_on_the_deadhead_can_turn_a_reachable_pickup_into_a_missed_window():
+    # pickup in London, window closes in 65 minutes; the candidate sits in Woodstock, ~45 min away on a clear road
+    load = {"bill_number": "1", "orig_lat": 42.98, "orig_lon": -81.25, "dest_lat": 43.52, "dest_lon": -79.88,
+            "pickup_by_end": T0 + timedelta(minutes=65), "load_type": "Dry Van", "weight_lbs": 30000}
+    cand = [{"driver_name": "w", "unit": "W", "lat": 43.13, "lon": -80.75, "cycle": 1, "trailer_type": "Dry Van", "trailer_capacity_lbs": 44500}]
+    clear = rank_candidates(T0, load, cand, {"w": fresh(2)})[0]
+    assert clear["eligible"] and clear["road_extra_h"] == 0
+    # a collision zone across the 401 between them, traffic at 30 %
+    blocked = rank_candidates(T0, load, cand, {"w": fresh(2)}, closures=[Closure("c", 43.05, -81.0, 15, 0.3, "401 EB collision")])[0]
+    assert blocked["road_extra_h"] > 0.3 and blocked["road_events"] == ["401 EB collision"]
+    assert not blocked["eligible"] and any("cannot reach pickup" in b for b in blocked["blockers"])
+    assert any(r.startswith("road: +") for r in blocked["reasons"])

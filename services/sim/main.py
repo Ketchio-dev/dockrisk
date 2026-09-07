@@ -208,11 +208,12 @@ class Sim:
         live.sort(key=lambda i: (0 if i["severity"] == "severe" else 1))
         if live:
             i = live[0]
+            # its own id namespace: the API's live-511 poller owns ids that match the feed, and prunes them by proximity
             ev = {"title": f"[511 live] {i['road']} {i['direction'] or ''}: {i['description'][:90]}", "factor": 0.45 if i["severity"] == "severe" else 0.7,
-                  "lat": i["lat"], "lon": i["lon"], "radius_km": 8, "source": i["source"], "id": str(i["id"])}
+                  "lat": i["lat"], "lon": i["lon"], "radius_km": 8, "source": f"scenario corridor event, from {i['source']}", "id": f"scenario:{i['id']}"}
         else:
             ev = {"title": "HWY 401 WB near Cambridge: collision, 2 lanes blocked (simulated — no live 511 incident on the corridor right now)",
-                  "factor": 0.45, "lat": 43.39, "lon": -80.35, "radius_km": 12, "source": "simulated"}
+                  "factor": 0.45, "lat": 43.39, "lon": -80.35, "radius_km": 12, "source": "simulated", "id": "scenario:cambridge"}
         self.events = [(self.t + timedelta(minutes=25), "closure", ev)]
 
     def seed_api(self, reset: bool):
