@@ -46,34 +46,38 @@ Tap **on time**, then **Checked in — at arrival (09:25)**. Back on the dispatc
 card shrink (no more "on-time unconfirmed / no check-in"). "The billing clock starts at the later of check-in
 and appointment. The driver attests; the tap time is kept separately in the ledger."
 
-## 3:30–5:00 — the collision of clocks
+## 3:30–5:00 — the collision of clocks, and the road
 
-Let the sim run to ~11:20. Watch the card: **"✗ the wait so far has already made it infeasible · at arrival
-+1h 10m · if released now −1h 30m"**. Inbox turns critical: *next load at risk*, *HOS departure margin*.
-"Detention starts billing at 12:00. The operational deadline came first — the customer's free two hours were
-never free to the carrier."
+Let the sim run to ~11:20. Watch the row: **"The wait so far has already made it infeasible · margin at
+arrival +1h 10m · if released now −1h 30m"**. Status word turns red: *Next load at risk*. Below it, an amber
+line: **"Road: +N min through HWY 401 Eastbound"** — the corridor event that fired at 07:55 (a live 511 item
+when one is on the 401/403, otherwise the simulated Cambridge collision, labelled). "Two things ate this
+driver's day: a dock and a highway. The engine adds both to the same forward check. When the road alone is
+the difference, the verdict says so: *the road delay on top of the predicted wait makes it infeasible* — and
+the clear-road margin is right there." That sentence is the brief's bonus paragraph, answered.
 
 ## 5:00–6:30 — rescue
 
-Click **▶ find a relief driver (rescue)**. Candidates ranked with reasons: **Driver8 / B9001 — eligible,
-89 km deadhead, ETA 13:17 before the 13:30 window, 4.1 h HOS buffer**; others blocked with the reason
-("cannot reach pickup by 13:30", "busy until…"). Click **Offer load**. Switch to the Driver8 tab: the offer
-appears → **Accept**. Back on dispatch: *Rescue coverage* shows **accepted ✓**, the next-load exception
-resolves ("load reassigned"), the day bar gains a **relief accepted** mark, and on the map B9001 starts driving
-toward London.
+Click **Find a relief driver**. Candidates ranked with reasons: **Driver8 / B9001 — eligible, ~110 km
+deadhead, ETA before the 13:30 window, HOS buffer**, and on the same line **(+3 min road)** — each candidate
+pays for the closures on *its own* deadhead, so a farther truck behind the 410 shows +26 min and a blocker.
+Others blocked with the reason ("cannot reach pickup by 13:30", "busy until…"). Click **Offer load**. Switch
+to the Driver8 tab: the offer appears → **Accept**. Back on dispatch: *Relief accepted* on the row, the
+next-load exception resolves ("load reassigned"), the day bar gains a **relief accepted** mark, and on the
+map B9001 starts driving toward London.
 
 ## 6:30–8:00 — the claim
 
-Let the sim reach ~12:15. On the hero tab tap **Loading / unloading done** then **Released — leaving**. The
+Let the sim reach ~12:15. On the hero tab tap **Loading done** then **Released, leaving**. The
 truck exits the property; a **draft detention charge** appears: qualifying 135 min → 15 billable min at the
-15-min floor → **$18.75**, party consignee, review reasons listed. Click **packet ↗**: the printable claim —
+15-min floor → **$18.75**, party consignee, review reasons listed. Click **Packet**: the printable claim —
 policy applied, timestamps, the event ledger with sources, GPS sample, duty timeline, stated limits.
 "This is what turns a calculation into money the customer will pay."
 
 ## 8:00–9:00 — where the AI is, and isn't (`/policies`)
 
-Paste the sample rate confirmation, **Extract terms**: badge `extracted-llm · gpt-6-astra`, each term with
-its clause underneath ("two (2) hours free"), *not stated → default* where the text is silent. Confirm.
+Paste the sample rate confirmation, **Extract terms**: the label reads *Read by the model · gpt-6-astra*, each
+term with its clause underneath ("two (2) hours free"), *not stated — default* in amber where the text is silent. Confirm.
 "AI where language is messy; rules where law and money are precise. The model never computes a charge."
 Toggle **511 live** on the map: real Ontario 511 events on the 400-series, right now.
 
@@ -89,6 +93,6 @@ goes to review. Everything else is on the screen behind you. Questions.
 |---|---|
 | Header badge says **offline** | API died: `scripts/demo.sh 60` (keeps the web tab), then **reset** |
 | Map tiles grey | Satellite toggle → cached tiles; OSM needs the network |
-| Clock stopped | Header **▶ resume** (the sim idles when paused or finished) |
+| Clock stopped | Header **Resume** (the sim idles when paused or finished) |
 | Wrong numbers | **reset**; the seed replays identically |
 | Anything else | Play the 90-second recording and talk over it |
