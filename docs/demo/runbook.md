@@ -24,7 +24,7 @@ and writes language. The engine computes every number, and the dispatcher confir
 
 "We opened the carrier's own 62-day TruckMate export and replayed every Southern Ontario stop through the
 rules. **257 detention charges, 768 billable hours, $57.6k at $75/h — about $31k a month** — and July was
-three times August, so this is bursty, not steady." Scroll to *If DockRisk had been running*: "The
+nearly three times August, so this is bursty, not steady." Scroll to *If DockRisk had been running*: "The
 30-minute warning, trained on the first four weeks and scored on the last four: **115 of the 126 stops that
 went over free time were flagged half an hour before billing started** — recall 91 %, precision 79 %."
 Point at the histogram: median wait is under an hour; the money is in the thin tail past the two-hour line.
