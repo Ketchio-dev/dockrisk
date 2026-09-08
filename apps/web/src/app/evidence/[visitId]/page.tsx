@@ -1,5 +1,6 @@
 "use client";
 import { use, useEffect, useState } from "react";
+import Link from "next/link";
 import { api, fmtMin } from "@/lib/api";
 import { DayBar, type Band, type Mark } from "@/components/DayBar";
 import { Mark as Logo } from "@/components/Brand";
@@ -61,7 +62,7 @@ export default function Evidence({ params }: { params: Promise<{ visitId: string
   const [p, setP] = useState<Packet | null>(null);
   const [err, setErr] = useState<string | null>(null);
   useEffect(() => { api<Packet>(`/visits/${visitId}/evidence`).then(setP).catch((e) => setErr(String(e))); }, [visitId]);
-  if (err) return <main className="p-8 ink-2">No packet for visit #{visitId}. <a href="/">Dispatch</a></main>;
+  if (err) return <main className="p-8 ink-2">No packet for visit #{visitId}. <Link href="/">Dispatch</Link></main>;
   if (!p) return <main className="mx-auto max-w-3xl px-6 py-5"><div className="label">Evidence packet · visit #{visitId}</div><div className="display mt-2 text-[46px] ink-4">$—</div><div className="rule-t mt-4" /></main>;
   const c = p.calculation; const v = p.visit;
   const day = String(v.property_entered_ts ?? v.approach_ts ?? "").slice(0, 10);
@@ -95,7 +96,7 @@ export default function Evidence({ params }: { params: Promise<{ visitId: string
           <h1 className="display text-[22px]">{String(p.facility.name)}</h1>
           <div className="mt-1 text-sm ink-3"><span className="capitalize">{String(v.stop_kind)}</span> · bill <span className="mono">{v.bill_number ?? "—"}</span> · {v.driver_name} · <span className="mono">{v.unit}</span> · visit #{v.visit_id}</div>
         </div>
-        <div className="no-print flex items-center gap-2"><a href="/" className="btn btn-sm plain">Dispatch</a><button onClick={() => window.print()} className="btn btn-sm btn-primary">Print / PDF</button></div>
+        <div className="no-print flex items-center gap-2"><Link href="/" className="btn btn-sm plain">Dispatch</Link><button onClick={() => window.print()} className="btn btn-sm btn-primary">Print / PDF</button></div>
       </header>
 
       {c && (

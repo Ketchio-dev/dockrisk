@@ -79,6 +79,11 @@ function WeekChart({ weeks }: { weeks: Backtest["by_week"] }) {
   );
 }
 
+const Slider = ({ label, v, set, min, max, step = 1, unit = "" }: { label: string; v: number; set: (n: number) => void; min: number; max: number; step?: number; unit?: string }) => (
+  <label className="block text-xs ink-3">{label} <span className="display text-[13px]" style={{ color: "var(--ink)" }}>{v}{unit}</span>
+    <input type="range" min={min} max={max} step={step} value={v} onChange={(e) => set(Number(e.target.value))} className="mt-1 block w-full" style={{ accentColor: "var(--ink)" }} /></label>
+);
+
 export default function DataPage() {
   const [dq, setDq] = useState<DQ[]>([]);
   const [ds, setDs] = useState<Dataset | null>(null);
@@ -93,10 +98,7 @@ export default function DataPage() {
     api<Backtest>(`/backtest?free_min=${free}&rate=${lo}&region_only=${region}&cap_min=${cap * 60}`).then(setBt).catch(() => setBt(null));
   }, 150); return () => clearTimeout(t); }, [free, lo, hi, region, cap]);
 
-  const Slider = ({ label, v, set, min, max, step = 1, unit = "" }: { label: string; v: number; set: (n: number) => void; min: number; max: number; step?: number; unit?: string }) => (
-    <label className="block text-xs ink-3">{label} <span className="display text-[13px]" style={{ color: "var(--ink)" }}>{v}{unit}</span>
-      <input type="range" min={min} max={max} step={step} value={v} onChange={(e) => set(Number(e.target.value))} className="mt-1 block w-full" style={{ accentColor: "var(--ink)" }} /></label>
-  );
+
   const blocks = dq.filter((r) => r.severity === "error");
   const PRIORITY = ["order_no_rate_column", "leg_expected_date_sentinel", "order_missing_actual_pickup", "order_missing_actual_delivery"];
   const watch = dq.filter((r) => r.severity === "warn" && r.affected > 0).sort((a, b) => (PRIORITY.indexOf(a.rule) + 1 || 99) - (PRIORITY.indexOf(b.rule) + 1 || 99) || b.pct - a.pct);

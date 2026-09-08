@@ -39,15 +39,19 @@ export function ChargesList({ charges }: { charges: Charge[] }) {
 }
 
 export function RescuePanel({ bill, excludeDriver, onClose }: { bill: string; excludeDriver: string | null; onClose: () => void }) {
-  const [data, setData] = useState<{ candidates: Candidate[]; load: Record<string, unknown> } | null>(null);
-  const [err, setErr] = useState<string | null>(null);
+  // results are keyed by the request they answer, so a new bill/driver shows the wait state without a clearing setState in the effect
+  const key = `${bill}|${excludeDriver ?? ""}`;
+  const [res, setRes] = useState<{ key: string; data?: { candidates: Candidate[]; load: Record<string, unknown> }; err?: string } | null>(null);
+  const data = res?.key === key ? res.data ?? null : null;
+  const err = res?.key === key ? res.err ?? null : null;
   const [done, setDone] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   useEffect(() => {
-    let live = true; setData(null); setErr(null);
-    api<{ candidates: Candidate[]; load: Record<string, unknown> }>(`/rescue/${bill}${excludeDriver ? `?exclude_driver=${excludeDriver}` : ""}`).then((d) => live && setData(d)).catch((e) => live && setErr(String(e)));
+    let live = true;
+    api<{ candidates: Candidate[]; load: Record<string, unknown> }>(`/rescue/${bill}${excludeDriver ? `?exclude_driver=${excludeDriver}` : ""}`)
+      .then((d) => live && setRes({ key, data: d })).catch((e) => live && setRes({ key, err: String(e) }));
     return () => { live = false; };
-  }, [bill, excludeDriver]);
+  }, [bill, excludeDriver, key]);
   const assign = async (c: Candidate) => {
     if (pending || done) return;
     setPending(true);
@@ -55,7 +59,7 @@ export function RescuePanel({ bill, excludeDriver, onClose }: { bill: string; ex
       await api("/assignments", { method: "POST", body: JSON.stringify({ bill_number: bill, driver_name: c.driver_name, unit: c.unit, status: "offered",
         reason: { via: "rescue", reasons: c.reasons, pickup_by_start: (data?.load as { pickup_by_start?: string })?.pickup_by_start, pickup_by_end: (data?.load as { pickup_by_end?: string })?.pickup_by_end } }) });
       setDone(c.driver_name);
-    } catch (e) { setErr(String(e)); } finally { setPending(false); }
+    } catch (e) { setRes({ key, data: data ?? undefined, err: String(e) }); } finally { setPending(false); }
   };
   const load = data?.load as { orig_city?: string; dest_city?: string; pickup_by_start?: string; pickup_by_end?: string } | undefined;
   return (

@@ -53,7 +53,6 @@ export default function FleetMap({ fleet, facilities, exceptions, selected, onSe
   fleet: FleetRow[]; facilities: Facility[]; exceptions: Exception[]; selected: string | null; onSelect: (unit: string | null) => void;
 }) {
   const [satellite, setSatellite] = useState(false);
-  const [crumbs, setCrumbs] = useState<[number, number][]>([]);
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [showMinor, setShowMinor] = useState(false);
   const [zoom, setZoom] = useState(8);
@@ -64,13 +63,16 @@ export default function FleetMap({ fleet, facilities, exceptions, selected, onSe
     load(); const id = setInterval(load, 60000);
     return () => { live = false; clearInterval(id); };
   }, []);
+  // breadcrumbs are stored with the unit they belong to, so deselecting or switching trucks shows none until the new ones arrive
+  const [crumbsFor, setCrumbsFor] = useState<{ unit: string; pts: [number, number][] } | null>(null);
   useEffect(() => {
-    if (!selected) { setCrumbs([]); return; }
+    if (!selected) return;
     let live = true;
-    const load = () => fetch(`${API}/breadcrumbs/${selected}`).then((r) => r.json()).then((rows: { lat: number; lon: number }[]) => live && setCrumbs(rows.map((r) => [r.lat, r.lon])));
+    const load = () => fetch(`${API}/breadcrumbs/${selected}`).then((r) => r.json()).then((rows: { lat: number; lon: number }[]) => live && setCrumbsFor({ unit: selected, pts: rows.map((r) => [r.lat, r.lon]) }));
     load(); const id = setInterval(load, 3000);
     return () => { live = false; clearInterval(id); };
   }, [selected]);
+  const crumbs = crumbsFor && crumbsFor.unit === selected ? crumbsFor.pts : [];
   const closures = useMemo(() => exceptions.filter((e) => e.kind === "closure" && typeof e.detail.lat === "number"), [exceptions]);
   const sel = fleet.find((f) => f.unit === selected);
   const [resetToken, setResetToken] = useState(0);

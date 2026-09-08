@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 /** The mark: a building with one open bay door. 18 px, ink. Used once per page, before the wordmark. */
 export function Mark({ size = 18 }: { size?: number }) {
   return (
@@ -28,7 +30,7 @@ export function PageHeader({ title, kicker, current, right }: { title: string; k
   return (
     <header className="rule-b mb-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-3 pb-3">
       <div className="flex min-w-0 items-center gap-2.5">
-        <a href="/" className="plain flex items-center gap-2" aria-label="DockRisk dispatch"><Mark /></a>
+        <Link href="/" className="plain flex items-center gap-2" aria-label="DockRisk dispatch"><Mark /></Link>
         <div className="min-w-0">
           {kicker && <div className="label truncate">{kicker}</div>}
           <h1 className="display text-[22px]">{title}</h1>

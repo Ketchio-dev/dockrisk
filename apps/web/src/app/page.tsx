@@ -11,11 +11,14 @@ const FleetMap = dynamic(() => import("@/components/FleetMap"), { ssr: false });
 
 function useSnapshot() {
   const [snap, setSnap] = useState<Snapshot | null>(null);
-  const [lastAt, setLastAt] = useState<number | null>(null);
+  const [stale, setStale] = useState(false);
   const [mode, setMode] = useState<"connecting" | "live" | "polling" | "offline">("connecting");
   useEffect(() => {
     let es: EventSource | null = null; let poll: ReturnType<typeof setInterval> | null = null; let retry: ReturnType<typeof setTimeout> | null = null; let dead = false;
-    const got = (s: Snapshot) => { setSnap(s); setLastAt(Date.now()); };
+    let lastAt = 0;
+    const got = (s: Snapshot) => { setSnap(s); lastAt = Date.now(); setStale(false); };
+    // the stale flag is a clock reading, so it lives on a ticker rather than in render
+    const tick = setInterval(() => setStale(lastAt > 0 && Date.now() - lastAt > 6000), 1000);
     api<Snapshot>("/snapshot").then(got).catch(() => setMode("offline"));
     // live over SSE; on a break, poll every 2 s and try the stream again every 10 s (an API restart drops the stream)
     const fallback = () => { setMode("polling"); if (!poll) poll = setInterval(() => api<Snapshot>("/snapshot").then((s) => { got(s); setMode("polling"); }).catch(() => setMode("offline")), 2000); if (!retry) retry = setTimeout(() => { retry = null; if (!dead) connect(); }, 10000); };
@@ -27,9 +30,9 @@ function useSnapshot() {
       } catch { fallback(); }
     };
     connect();
-    return () => { dead = true; es?.close(); if (poll) clearInterval(poll); if (retry) clearTimeout(retry); };
+    return () => { dead = true; es?.close(); clearInterval(tick); clearInterval(poll ?? undefined); clearTimeout(retry ?? undefined); };
   }, []);
-  return { snap, lastAt, mode };
+  return { snap, stale, mode };
 }
 
 const DAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -51,8 +54,7 @@ function SimControls({ sim }: { sim: Snapshot["sim"] | undefined }) {
 }
 
 export default function Dispatcher() {
-  const { snap, lastAt, mode } = useSnapshot();
-  const stale = lastAt != null && Date.now() - lastAt > 6000;
+  const { snap, stale, mode } = useSnapshot();
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [exposure, setExposure] = useState<Exposure | null>(null);
   const [selected, setSelected] = useState<string | null>(null);

@@ -14,6 +14,28 @@ Carrier must provide in/out times signed by the facility and the BOL with the in
 
 const RULE_WORD: Record<string, string> = { max_checkin_appointment: "later of check-in and appointment", arrival: "arrival", appointment: "appointment time", dock_in: "dock assignment" };
 
+const DEFAULTS: Partial<Record<keyof Terms, number | string | boolean>> = { free_time_min: 120, rate_per_hour: 75, increment_min: 15, minimum_charge: 0, billing_start_rule: "max_checkin_appointment", requires_on_time_arrival: true };
+const NEEDLES: Record<string, RegExp> = {
+  free_time_min: /free|first\s+\d/i, rate_per_hour: /\$\s?\d+(\.\d+)?\s*(\/|per)\s*(hour|hr)/i, increment_min: /increment/i, maximum_charge: /max|exceed|cap/i,
+  minimum_charge: /min(imum)?\b(?!ute)/i, billing_start_rule: /later of|from (the )?(arrival|appointment|check)/i, requires_on_time_arrival: /on[- ]time|late/i,
+};
+
+/** One extracted term: label, the "not stated" note in amber when a default will apply, the input, the clause it came from. */
+function Field({ k, label, type = "number", terms, setTerms, clause }: { k: keyof Terms; label: string; type?: string; terms: Terms; setTerms: (t: Terms) => void; clause: string | null }) {
+  const v = terms[k] as string | number | null;
+  const unknown = v == null || v === "";
+  return (
+    <label className="block text-[11px] ink-3">
+      <span className="flex items-baseline justify-between">{label}
+        {unknown && <span className={`text-[10px] ${DEFAULTS[k] !== undefined ? "t-warn" : "ink-4"}`}>{DEFAULTS[k] !== undefined ? `not stated — default ${String(DEFAULTS[k])}` : "not stated"}</span>}
+      </span>
+      <input type={type} value={v ?? ""} placeholder={DEFAULTS[k] !== undefined ? `default ${String(DEFAULTS[k])}` : "—"} onChange={(e) => setTerms({ ...terms, [k]: e.target.value === "" ? null : type === "number" ? Number(e.target.value) : e.target.value })}
+        className="field display mt-1 text-[16px]" style={{ height: 34, borderColor: unknown ? "#f0c69a" : undefined }} />
+      {clause && <div className="mt-1 truncate text-[10px] italic ink-3" title={clause}>“{clause}”</div>}
+    </label>
+  );
+}
+
 export default function Policies() {
   const [text, setText] = useState(SAMPLE);
   const [customer, setCustomer] = useState("ACME Foods");
@@ -26,32 +48,11 @@ export default function Policies() {
   useEffect(() => { load(); }, []);
   const extract = async () => { setBusy(true); try { const r = await api<Extract>("/policies/extract", { method: "POST", body: JSON.stringify({ text, customer, prefer_llm: true }) }); setEx(r); setTerms(r.terms); } finally { setBusy(false); } };
   const confirm = async () => { if (!ex || !terms) return; setBusy(true); try { const p = await api<Policy>("/policies/confirm", { method: "POST", body: JSON.stringify({ customer, terms, source: ex.source, source_text: ex.source_text, confirmed_by: "dispatcher" }) }); await load(); setActivated(p); setEx(null); setTerms(null); } finally { setBusy(false); } };
-  const DEFAULTS: Partial<Record<keyof Terms, number | string | boolean>> = { free_time_min: 120, rate_per_hour: 75, increment_min: 15, minimum_charge: 0, billing_start_rule: "max_checkin_appointment", requires_on_time_arrival: true };
   const clauseFor = (k: keyof Terms): string | null => {
     if (!terms) return null;
     const v = terms[k];
-    const qs = terms.evidence_quotes ?? [];
-    const needles: Record<string, RegExp> = {
-      free_time_min: /free|first\s+\d/i, rate_per_hour: /\$\s?\d+(\.\d+)?\s*(\/|per)\s*(hour|hr)/i, increment_min: /increment/i, maximum_charge: /max|exceed|cap/i,
-      minimum_charge: /min(imum)?\b(?!ute)/i, billing_start_rule: /later of|from (the )?(arrival|appointment|check)/i, requires_on_time_arrival: /on[- ]time|late/i,
-    };
     if (v == null || v === "") return null;
-    return qs.find((q) => needles[k as string]?.test(q)) ?? null;
-  };
-  const F = ({ k, label, type = "number" }: { k: keyof Terms; label: string; type?: string }) => {
-    const v = terms?.[k] as string | number | null;
-    const clause = clauseFor(k);
-    const unknown = v == null || v === "";
-    return (
-      <label className="block text-[11px] ink-3">
-        <span className="flex items-baseline justify-between">{label}
-          {unknown && <span className={`text-[10px] ${DEFAULTS[k] !== undefined ? "t-warn" : "ink-4"}`}>{DEFAULTS[k] !== undefined ? `not stated — default ${String(DEFAULTS[k])}` : "not stated"}</span>}
-        </span>
-        <input type={type} value={v ?? ""} placeholder={DEFAULTS[k] !== undefined ? `default ${String(DEFAULTS[k])}` : "—"} onChange={(e) => setTerms({ ...terms!, [k]: e.target.value === "" ? null : type === "number" ? Number(e.target.value) : e.target.value })}
-          className="field display mt-1 text-[16px]" style={{ height: 34, borderColor: unknown ? "#f0c69a" : undefined }} />
-        {clause && <div className="mt-1 truncate text-[10px] italic ink-3" title={clause}>“{clause}”</div>}
-      </label>
-    );
+    return (terms.evidence_quotes ?? []).find((q) => NEEDLES[k as string]?.test(q)) ?? null;
   };
   return (
     <main className="mx-auto max-w-5xl px-6 py-5">
@@ -79,9 +80,9 @@ export default function Policies() {
                 {ex.warning && <span className="t-warn">{ex.warning}</span>}
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <F k="free_time_min" label="Free time, minutes" /><F k="rate_per_hour" label="Rate, $ per hour" />
-                <F k="increment_min" label="Increment, minutes" /><F k="maximum_charge" label="Maximum per stop, $" />
-                <F k="minimum_charge" label="Minimum, $" />
+                {([["free_time_min", "Free time, minutes"], ["rate_per_hour", "Rate, $ per hour"], ["increment_min", "Increment, minutes"], ["maximum_charge", "Maximum per stop, $"], ["minimum_charge", "Minimum, $"]] as [keyof Terms, string][]).map(([k, label]) => (
+                  <Field key={k} k={k} label={label} terms={terms} setTerms={setTerms} clause={clauseFor(k)} />
+                ))}
                 <label className="block text-[11px] ink-3">Clock starts at
                   <select value={terms.billing_start_rule ?? "max_checkin_appointment"} onChange={(e) => setTerms({ ...terms, billing_start_rule: e.target.value })} className="field mt-1" style={{ height: 34 }}>
                     {Object.entries(RULE_WORD).map(([r, w]) => <option key={r} value={r}>{w}</option>)}
