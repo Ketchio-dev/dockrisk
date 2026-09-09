@@ -1,95 +1,139 @@
-# 제출 영상 내레이션 — 4분 05초
+# 제출 영상 내레이션 — 3분 50초
 
-3~5분 규정 안. 컷은 `scripts/record_video.sh`가 만들고, 이 대본이 그 위에 얹힙니다.
+두 번째 판. 첫 판은 글로 썼고 이건 말로 씁니다. 왜 바꿨는지는 맨 아래.
 
-**녹음 방법**: 조용한 방, 입에서 20~30cm, 한 번에 쭉 읽되 틀리면 그 문장만 다시. 파일은
-`docs/demo/voice/` 아래에 두면 됩니다. 아래 **[REF]** 표시된 첫 블록은 음성 복제의 레퍼런스로도
-쓰이므로 특히 또박또박, 잡음 없이.
-
----
-
-## 1 · 문제 — 0:00–0:45
-
-### [REF] 0:00–0:12 · 타이틀
-
-> A truck sitting at a loading dock is burning two clocks at once, and the industry only watches one of them.
-> I'm Junsu, and this is DockRisk — a detention and hours-of-service exception desk for city dispatch in Southern Ontario.
-
-### 0:12–0:27 · 두 손해
-
-> The first clock is money. Past the two hours of free time in the contract, detention starts accruing — but nobody wrote down the in and out times, so the carrier eats it.
-> The second clock is the law. Waiting at a dock is on-duty time, so the driver's legal hours are draining while the truck sits still.
-
-### 0:27–0:45 · 37분
-
-> Here is what that means. In our demo scenario the driver's next load becomes legally impossible at 12:53. The free time does not run out until 13:30.
-> Thirty-seven minutes. Every detention product on the market starts paying attention at 13:30 — by then the load is gone, and the only question left is who eats it.
+**녹음**: 조용한 방, 입에서 20 cm 안쪽, 블록 사이 1~2초 쉬기. `docs/demo/voice/`에 넣으면 됩니다.
+**[REF]** 블록은 음성 복제 레퍼런스로도 쓰이니 특히 또박또박.
 
 ---
 
-## 2 · 데모 — 0:45–3:45
+## 1 · 정체 — 0:00–0:12
 
-### 0:45–1:05 · 보드
+### [REF] 0:00–0:12
 
-> This is the dispatcher's board, running on the organizers' own TruckMate export. Eight trucks, ranked by urgency — not by arrival.
-> The columns are deadlines first: time until detention is billable, hours until a legal stop, and how long the truck has been waiting.
-
-### 1:05–1:25 · 세 시계
-
-> Driver84 is at a London distribution centre. Billable in thirty-seven minutes. One hour two minutes until he has to stop driving legally. Two hours three minutes waited so far.
-> Both clocks on one time axis, which is the whole idea.
-
-### 1:25–1:45 · 기사 체크인
-
-> The driver confirms on the companion app. That tap is not decoration — it is evidence.
-> The billing clock starts at the later of check-in and appointment, and the tap time is kept separately in the ledger, so the charge can be defended later.
-
-### 1:45–2:15 · 시계 충돌
-
-> Now watch the verdict change. The wait has already made the next load infeasible.
-> At arrival there was an hour and fourteen minutes of margin. If they released him this second, it is minus forty-nine. After the predicted wait, minus fifty-five.
-> And a live Ontario 511 event on the 401 is adding road minutes to the same forward check. Two things ate this driver's day — a dock and a highway — and the engine puts both in one calculation.
-
-### 2:15–2:40 · 구조
-
-> So dispatch finds a relief driver. Candidates are ranked with explicit reasons, not an optimizer score: deadhead distance and ETA against the pickup window, trailer type, hours-of-service for the whole plan, and each candidate pays for the road delay on its own route.
-> Drivers who cannot make it are blocked, with the reason written out.
-
-### 2:40–3:00 · 오퍼와 수락
-
-> One offer goes to the driver. He accepts on his phone. The exception resolves, and the original stop keeps every piece of its detention evidence.
-
-### 3:00–3:20 · 과금
-
-> When Driver84 is finally released, a draft charge appears. Qualifying dwell of one hundred thirty-five minutes, fifteen billable minutes at the fifteen-minute floor, eighteen dollars seventy-five, billed to the consignee.
-
-### 3:20–3:45 · 증거 패킷
-
-> And this is what turns a calculation into money a customer will actually pay. The amount first, then the arithmetic with each rule written out in words, then the event ledger — every transition, who reported it, and when it was received.
-> When the evidence is thin, we do not bill quietly. The charge is drafted and flagged for review, and the packet says exactly why.
+> Hi, I'm Junsu. This is Dock Risk, built for the RoadStar Hackathon.
+> It catches the moment a dock delay kills a driver's next load — while dispatch can still do something about it.
 
 ---
 
-## 3 · 마무리 — 3:45–4:05
+## 2 · 문제 — 0:12–0:35
 
-### 3:45–3:55 · 안 만든 것
+### 0:12–0:24 · 두 시계
 
-> We also named what we did not build. Axle-weight compliance is not possible from a Trucks sheet with one column. This is not a certified ELD. And we say exposure, never unbilled — the export has no billing records.
+> A truck waits at a dock. Two clocks are running.
+> One is money. Past two hours, detention starts billing.
+> The other is the law. Waiting counts as on-duty time, so his legal hours drain while he sits still.
 
-### 3:55–4:05 · 닫기
+### 0:24–0:35 · 격차
 
-> Replayed across the carrier's own fifty-six days, that is about thirty-one thousand dollars a month of exposure, and a hundred and fifteen of the hundred and twenty-six stops that went past free time were flagged before billing even started.
+> Here's the part nobody watches. [pause]
+> The second clock runs out first.
+> In this scenario the next load dies at 12:53. Free time doesn't end until 13:30.
+> Thirty-seven minutes. [pause] Every detention tool on the market wakes up at 13:30.
+
+---
+
+## 3 · 작동하는 제품 — 0:35–2:45
+
+### 0:35–0:50 · 보드
+
+> So here's the desk. Eight trucks, ranked by which one is about to become a problem.
+> The first two columns are the two clocks. Time until detention bills, hours until he has to stop driving.
+
+### 0:50–1:05 · 세 시계
+
+> Open Driver84. He's been waiting two hours.
+> Detention starts in thirty-seven minutes. He has one hour left to reach a legal stop.
+
+### 1:05–1:20 · 판정
+
+> And there's the verdict. [pause] The next load is already impossible.
+> Release him right now and he's still forty-nine minutes short.
+> A live 401 closure is adding road time to the same check.
+
+### 1:20–1:35 · 기사 앱
+
+> The driver confirms his check-in. One tap.
+> That tap is evidence. It sets when the billing clock starts, and it's kept with who reported it.
+
+### 1:35–1:55 · 구조
+
+> Dispatch looks for a relief driver.
+> Candidates come back with reasons, not scores. Distance, arrival time, trailer type, and whether his hours cover the whole trip.
+> Drivers who can't make it are blocked, and it says why.
+
+### 1:55–2:10 · 수락
+
+> One offer goes out. The driver accepts on his phone.
+> The load is saved. The original stop keeps every piece of its evidence.
+
+### 2:10–2:25 · 과금
+
+> Now Driver84 is released, and the charge writes itself.
+> Fifteen billable minutes. Eighteen seventy-five. Billed to the consignee.
+
+### 2:25–2:45 · 증거 패킷
+
+> This is what makes it collectable. [pause]
+> The amount, then the arithmetic with every rule spelled out, then the ledger — each event and who reported it.
+> When the evidence is thin, we don't bill. It's drafted, flagged, and the packet says exactly why.
+
+---
+
+## 4 · 증명 — 2:45–3:25
+
+### 2:45–3:05 · 재생
+
+> We replayed the organizers' own export. Fifty-six days, ten thousand legs, real dock timestamps.
+> About thirty-one thousand dollars a month of exposure. [pause]
+> And the thirty-minute warning caught a hundred and fifteen of the hundred and twenty-six stops that went over.
+
+### 3:05–3:25 · 한계
+
+> We trained on the first four weeks and scored on the last four, so that number is out of sample.
+> We also named what we couldn't build. Axle weight isn't possible — that sheet has one column.
+> This isn't a certified ELD. And we say exposure, not unbilled, because the file has no billing records.
+
+---
+
+## 5 · 닫기 — 3:25–3:50
+
+### 3:25–3:50
+
+> Detention timers are table stakes. [pause]
+> Connecting the dock clock to the next dispatch decision, early enough to act — that's Dock Risk.
 > Watch the clock that runs out first.
 
 ---
+
+## 왜 다시 썼나
+
+첫 판을 심사 현장 기준으로 다시 재봤습니다. 근거는 Devpost 심사위원 인터뷰와 방송 문체 지침입니다.
+
+**Devpost 심사위원 Richard Moot (Square):**
+> *"I watch the video to get context and then I use that for testing the submission."*
+> *"The video becomes crucial in giving us our first indicator of how much time was invested."*
+
+영상은 광고가 아니라 **제품 테스트 설명서**입니다. 그런데 첫 판은 45초 동안 슬라이드만 보여줬습니다. "나쁜 demo video의 흔한 실수" 1번이 정확히 그것 — 문제를 오래 말하고 제품을 늦게 보여주기.
+
+| | 첫 판 | 이 판 |
+|---|---|---|
+| 제품 첫 등장 | 0:45 | **0:35** |
+| 평균 문장 길이 | 24단어 | **14단어** |
+| 최장 문장 | 38단어 | 24단어 |
+| 사용자 행동 시점 | 3인칭 서술 | 현재형·능동 |
+| 한 문장 속 숫자 | 최대 4개 | **1개** |
+| 명시적 pause | 없음 | 6곳 |
+
+방송 문체 기준(University of Arkansas): 문장당 20단어 이하, 한 문장에 한 생각, 능동태, 현재형, 완성 후 소리 내어 읽기.
+
+숫자는 반올림하고 하나씩 말합니다. `$57,638`은 안 쓰고 "about thirty-one thousand a month"만 씁니다. 화면에 이미 보이는 건 읽지 않습니다.
 
 ## 발음 주의
 
 | 단어 | 발음 |
 |---|---|
+| Dock Risk | **닥 리스크** — 두 단어로 끊어서 |
 | detention | 디텐션 |
 | consignee | 컨사이니 |
-| deadhead | 데드헤드 |
-| infeasible | 인피저블 |
-| qualifying dwell | 퀄리파잉 드웰 |
-| TruckMate | 트럭메이트 |
+| ELD | 이-엘-디 |
