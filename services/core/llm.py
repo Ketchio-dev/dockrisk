@@ -10,7 +10,7 @@ Order comes from `DOCKRISK_LLM_CHAIN` (default `spur,proxy`). Each named rung re
 its own base URL, key and model, and a rung with no key is skipped silently rather
 than spending a demo on an auth error:
 
-    SPUR_BASE_URL   SPUR_API_KEY   SPUR_MODEL        # the hackathon's sponsored credits
+    SPUR_BASE_URL   SPUR_API_KEY   SPUR_MODEL        # sponsored credits; model id is spur-glm-5-2
     OPENAI_BASE_URL OPENAI_API_KEY DOCKRISK_EXTRACT_MODEL
 
 Anthropic keeps its own path in the callers; this module is the OpenAI-compatible
@@ -44,7 +44,7 @@ def _rung(name: str) -> Rung | None:
             name="spur",
             base_url=os.environ.get("SPUR_BASE_URL", "https://ai.spuric.com/v1").strip(),
             api_key=key,
-            model=os.environ.get("SPUR_MODEL", "glm-5.2").strip(),
+            model=os.environ.get("SPUR_MODEL", "spur-glm-5-2").strip(),
         )
     if name == "proxy":
         key = os.environ.get("OPENAI_API_KEY", "").strip()
