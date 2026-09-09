@@ -39,3 +39,9 @@ out/
 
 # map tile cache for demo-day resilience
 .tile-cache/
+
+# raw voice takes (large, and the user's own audio)
+docs/demo/voice/*.m4a
+docs/demo/voice/*.wav
+docs/demo/voice/*.mp3
+docs/demo/voice/*.aiff
