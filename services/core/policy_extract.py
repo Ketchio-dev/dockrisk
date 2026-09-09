@@ -123,26 +123,37 @@ def _anthropic(text: str, model: str) -> Extraction:
     return Extraction(terms=response.parsed_output, source="extracted-llm", provider="anthropic", model=model)
 
 
-def _openai(text: str, model: str) -> Extraction:
-    from openai import OpenAI  # resolves OPENAI_API_KEY / OPENAI_BASE_URL
-    client = OpenAI()
-    completion = client.chat.completions.parse(
-        model=model,
-        messages=[{"role": "system", "content": SYSTEM}, {"role": "user", "content": f"Rate confirmation / agreement text:\n\n{text}"}],
-        response_format=DetentionTerms,
-    )
-    msg = completion.choices[0].message
-    if msg.refusal:
-        raise RuntimeError(f"model refused: {msg.refusal}")
-    return Extraction(terms=msg.parsed, source="extracted-llm", provider="openai", model=model)
+def _openai(text: str, model: str | None = None) -> Extraction:
+    """Try each OpenAI-compatible endpoint in `core.llm.chain()` — SPUR first, the
+    proxy behind it. `model` overrides the rung's own model when given."""
+    from . import llm
+
+    def once(rung: "llm.Rung") -> Extraction:
+        completion = rung.client().chat.completions.parse(
+            model=model or rung.model,
+            messages=[{"role": "system", "content": SYSTEM}, {"role": "user", "content": f"Rate confirmation / agreement text:\n\n{text}"}],
+            response_format=DetentionTerms,
+        )
+        msg = completion.choices[0].message
+        if msg.refusal:
+            raise RuntimeError(f"model refused: {msg.refusal}")
+        return Extraction(terms=msg.parsed, source="extracted-llm", provider=rung.name, model=model or rung.model)
+
+    got, rung, notes = llm.call(once)
+    if notes:  # a higher-priority endpoint failed; say which, do not hide it
+        got.warning = (got.warning + " · " if got.warning else "") + f"fell back to {rung.name} ({'; '.join(notes)})"
+    return got
 
 
 def _llm(text: str) -> Extraction:
     provider = os.environ.get("DOCKRISK_EXTRACT_PROVIDER", "auto").lower()
     if provider == "auto":
-        provider = "openai" if os.environ.get("OPENAI_API_KEY") else "anthropic"
+        from . import llm
+        provider = "openai" if llm.chain() else "anthropic"
     if provider == "openai":
-        return _openai(text, os.environ.get("DOCKRISK_EXTRACT_MODEL", "gpt-6-astra"))
+        # No global model override: each rung names its own model, because the
+        # sponsor endpoint and the proxy do not serve the same catalogue.
+        return _openai(text)
     return _anthropic(text, os.environ.get("DOCKRISK_EXTRACT_MODEL", "claude-opus-5"))
 
 

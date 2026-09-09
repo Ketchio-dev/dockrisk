@@ -98,14 +98,25 @@ def _user_prompt(x: dict) -> str:
     return "Evidence packet (all values authoritative; copy money and times exactly as written, including the $ sign):\n" + "\n".join(f"{k}: {v}" for k, v in y.items())
 
 
-def _openai(x: dict, model: str) -> NoticeDraft:
-    from openai import OpenAI
-    client = OpenAI()
-    completion = client.chat.completions.parse(model=model, messages=[{"role": "system", "content": SYSTEM}, {"role": "user", "content": _user_prompt(x)}], response_format=Notice)
-    msg = completion.choices[0].message
-    if msg.refusal:
-        raise RuntimeError(f"model refused: {msg.refusal}")
-    return NoticeDraft(notice=msg.parsed, source="drafted-llm", provider="openai", model=model)
+def _openai(x: dict, model: str | None = None) -> NoticeDraft:
+    """Walk `core.llm.chain()` — SPUR first, the proxy behind it."""
+    from . import llm
+
+    def once(rung: "llm.Rung") -> NoticeDraft:
+        completion = rung.client().chat.completions.parse(
+            model=model or rung.model,
+            messages=[{"role": "system", "content": SYSTEM}, {"role": "user", "content": _user_prompt(x)}],
+            response_format=Notice,
+        )
+        msg = completion.choices[0].message
+        if msg.refusal:
+            raise RuntimeError(f"model refused: {msg.refusal}")
+        return NoticeDraft(notice=msg.parsed, source="drafted-llm", provider=rung.name, model=model or rung.model)
+
+    got, rung, notes = llm.call(once)
+    if notes:
+        got.warning = (got.warning + " · " if got.warning else "") + f"fell back to {rung.name} ({'; '.join(notes)})"
+    return got
 
 
 def _anthropic(x: dict, model: str) -> NoticeDraft:
@@ -128,9 +139,10 @@ def draft_notice(packet: dict, terms: dict | None = None, prefer_llm: bool = Tru
     if prefer_llm:
         provider = os.environ.get("DOCKRISK_EXTRACT_PROVIDER", "auto").lower()
         if provider == "auto":
-            provider = "openai" if os.environ.get("OPENAI_API_KEY") else "anthropic"
+            from . import llm
+            provider = "openai" if llm.chain() else "anthropic"
         try:
-            d = _openai(x, os.environ.get("DOCKRISK_EXTRACT_MODEL", "gpt-6-astra")) if provider == "openai" else _anthropic(x, os.environ.get("DOCKRISK_EXTRACT_MODEL", "claude-opus-5"))
+            d = _openai(x) if provider == "openai" else _anthropic(x, os.environ.get("DOCKRISK_EXTRACT_MODEL", "claude-opus-5"))
             return _check(d, x)
         except Exception as e:
             warn = f"LLM drafting unavailable ({type(e).__name__}: {str(e)[:80]}); used the template"
