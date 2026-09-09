@@ -1,0 +1,292 @@
+1
+00:00:00,000 --> 00:00:00,782
+Hi, I'm Junsu.
+
+2
+00:00:00,782 --> 00:00:03,686
+This is Dock Risk, built for the RoadStar Hackathon.
+
+3
+00:00:03,686 --> 00:00:07,094
+It catches the moment a dock delay kills a driver's next load
+
+4
+00:00:07,094 --> 00:00:09,720
+while dispatch can still do something about it.
+
+5
+00:00:10,900 --> 00:00:12,381
+A truck waits at a dock.
+
+6
+00:00:12,381 --> 00:00:13,800
+Two clocks are running.
+
+7
+00:00:13,800 --> 00:00:14,603
+One is money.
+
+8
+00:00:14,603 --> 00:00:17,133
+Past two hours, detention starts billing.
+
+9
+00:00:17,133 --> 00:00:18,429
+The other is the law.
+
+10
+00:00:18,429 --> 00:00:20,342
+Waiting counts as on-duty time,
+
+11
+00:00:20,342 --> 00:00:23,120
+so his legal hours drain while he sits still.
+
+12
+00:00:24,300 --> 00:00:26,340
+Here's the part nobody watches.
+
+13
+00:00:26,340 --> 00:00:28,447
+The second clock runs out first.
+
+14
+00:00:28,447 --> 00:00:31,410
+In this scenario the next load dies at 12:53.
+
+15
+00:00:31,410 --> 00:00:33,648
+Free time doesn't end until 13:30.
+
+16
+00:00:33,648 --> 00:00:35,030
+Thirty-seven minutes.
+
+17
+00:00:35,030 --> 00:00:38,520
+Every detention tool on the market wakes up at 13:30.
+
+18
+00:00:39,700 --> 00:00:40,864
+So here's the desk.
+
+19
+00:00:40,864 --> 00:00:41,661
+Eight trucks,
+
+20
+00:00:41,661 --> 00:00:44,665
+ranked by which one is about to become a problem.
+
+21
+00:00:44,665 --> 00:00:47,179
+The first two columns are the two clocks.
+
+22
+00:00:47,179 --> 00:00:48,834
+Time until detention bills,
+
+23
+00:00:48,834 --> 00:00:50,980
+hours until he has to stop driving.
+
+24
+00:00:52,100 --> 00:00:53,033
+Open Driver84.
+
+25
+00:00:53,033 --> 00:00:54,899
+He's been waiting two hours.
+
+26
+00:00:54,899 --> 00:00:57,633
+Detention starts in thirty-seven minutes.
+
+27
+00:00:57,633 --> 00:01:00,500
+He has one hour left to reach a legal stop.
+
+28
+00:01:01,600 --> 00:01:02,997
+And there's the verdict.
+
+29
+00:01:02,997 --> 00:01:05,092
+The next load is already impossible.
+
+30
+00:01:05,092 --> 00:01:08,701
+Release him right now and he's still forty-nine minutes short.
+
+31
+00:01:08,701 --> 00:01:12,019
+A live 401 closure is adding road time to the same check.
+
+32
+00:01:13,099 --> 00:01:15,216
+The driver confirms his check-in.
+
+33
+00:01:15,216 --> 00:01:15,816
+One tap.
+
+34
+00:01:15,730 --> 00:01:17,077
+That tap is evidence.
+
+35
+00:01:17,077 --> 00:01:19,514
+It sets when the billing clock starts,
+
+36
+00:01:19,514 --> 00:01:21,759
+and it's kept with who reported it.
+
+37
+00:01:22,933 --> 00:01:24,965
+Dispatch looks for a relief driver.
+
+38
+00:01:24,965 --> 00:01:27,635
+Candidates come back with reasons, not scores.
+
+39
+00:01:27,635 --> 00:01:29,783
+Distance, arrival time, trailer type,
+
+40
+00:01:29,783 --> 00:01:32,280
+and whether his hours cover the whole trip.
+
+41
+00:01:32,280 --> 00:01:35,473
+Drivers who can't make it are blocked, and it says why.
+
+42
+00:01:36,666 --> 00:01:38,017
+One offer goes out.
+
+43
+00:01:38,017 --> 00:01:40,291
+The driver accepts on his phone.
+
+44
+00:01:40,291 --> 00:01:41,570
+The load is saved.
+
+45
+00:01:41,570 --> 00:01:45,266
+The original stop keeps every piece of its evidence.
+
+46
+00:01:46,399 --> 00:01:50,049
+Now Driver84 is released, and the charge writes itself.
+
+47
+00:01:50,049 --> 00:01:51,707
+Fifteen billable minutes.
+
+48
+00:01:51,707 --> 00:01:53,167
+Eighteen seventy-five.
+
+49
+00:01:53,167 --> 00:01:54,759
+Billed to the consignee.
+
+50
+00:01:55,899 --> 00:01:57,790
+This is what makes it collectable.
+
+51
+00:01:57,790 --> 00:02:01,127
+The amount, then the arithmetic with every rule spelled out,
+
+52
+00:02:01,127 --> 00:02:03,741
+then the ledger each event and who reported it.
+
+53
+00:02:03,741 --> 00:02:06,021
+When the evidence is thin, we don't bill.
+
+54
+00:02:06,021 --> 00:02:09,079
+It's drafted, flagged, and the packet says exactly why.
+
+55
+00:02:10,233 --> 00:02:12,467
+We replayed the organizers' own export.
+
+56
+00:02:12,467 --> 00:02:15,675
+Fifty-six days, ten thousand legs, real dock timestamps.
+
+57
+00:02:15,675 --> 00:02:18,769
+About thirty-one thousand dollars a month of exposure.
+
+58
+00:02:18,769 --> 00:02:22,263
+And the thirty-minute warning caught a hundred and fifteen of
+
+59
+00:02:22,263 --> 00:02:25,013
+the hundred and twenty-six stops that went over.
+
+60
+00:02:26,133 --> 00:02:29,676
+We trained on the first four weeks and scored on the last
+
+61
+00:02:29,676 --> 00:02:32,037
+four, so that number is out of sample.
+
+62
+00:02:32,037 --> 00:02:34,337
+We also named what we couldn't build.
+
+63
+00:02:34,337 --> 00:02:37,755
+Axle weight isn't possible — that sheet has one column.
+
+64
+00:02:37,755 --> 00:02:39,434
+This isn't a certified ELD.
+
+65
+00:02:39,434 --> 00:02:41,547
+And we say exposure, not unbilled,
+
+66
+00:02:41,547 --> 00:02:44,033
+because the file has no billing records.
+
+67
+00:02:45,133 --> 00:02:47,159
+Detention timers are table stakes.
+
+68
+00:02:47,159 --> 00:02:50,496
+Connecting the dock clock to the next dispatch decision,
+
+69
+00:02:50,496 --> 00:02:52,700
+early enough to act that's Dock Risk.
+
+70
+00:02:52,700 --> 00:02:54,846
+Watch the clock that runs out first.
+
+71
+00:02:54,846 --> 00:02:58,302
+*"I watch the video to get context and then I use that for
+
+72
+00:02:58,302 --> 00:03:01,638
+testing the submission."* *"The video becomes crucial in
+
+73
+00:03:01,638 --> 00:03:05,333
+giving us our first indicator of how much time was invested."*
+

@@ -48,3 +48,4 @@ docs/demo/voice/*.aiff
 
 # generated media (regenerate with scripts/record_video.sh + mix_video.sh)
 docs/demo/submission.mp4
+docs/demo/submission-captioned.mp4
