@@ -168,6 +168,13 @@ export function Board({ fleet, visits, exceptions, assignments, charges, selecte
               )}
               {open && v && (
                 <div className="mt-4 space-y-1.5 pr-3 text-xs ink-2">
+                  {/* The instruction comes first. Everything under it is the evidence for it. */}
+                  {v.next_action && (
+                    <div className={`mb-2.5 pl-2.5 ${v.next_action.rank <= 1 ? "bar-bad" : v.next_action.rank <= 3 ? "bar-warn" : "bar-ink"}`}>
+                      <div className="text-[13px] font-semibold" style={{ color: "var(--ink)" }}>{v.next_action.do}</div>
+                      <div className="ink-3">{v.next_action.why}</div>
+                    </div>
+                  )}
                   {nl && (
                     <div>
                       <span className={`font-medium ${nl.verdict === "feasible" ? "t-ok" : "t-bad"}`}>{nl.verdict === "feasible" ? "Next load feasible" : nl.verdict[0].toUpperCase() + nl.verdict.slice(1)}</span>
@@ -176,7 +183,7 @@ export function Board({ fleet, visits, exceptions, assignments, charges, selecte
                       {nl.road_extra_h > 0 && <div className="t-warn">Road: +{Math.round(nl.road_extra_h * 60)} min through {nl.road_events.join(", ")}{nl.with_clear_road.feasible && !nl.with_predicted_wait.feasible ? " — the load was feasible on a clear road" : ` · clear-road margin ${fmtH(nl.with_clear_road.margin_h)}`}</div>}
                     </div>
                   )}
-                  {p && p.n > 0 && <div><span className="num" style={{ color: "var(--ink)" }}>{Math.round((p.p_over_free ?? 0) * 100)}%</span> chance this stop exceeds free time given {fmtMin(v.physical_dwell_min)} waited · median <span className="num">+{Math.round(p.median_remaining_min ?? 0)} min</span>, p90 +{Math.round(p.p90_remaining_min ?? 0)} <span className="ink-4">· {p.grain} history, n={p.n}</span></div>}
+                  {p && p.n > 0 && <div><span className="num" style={{ color: "var(--ink)" }}>{Math.round((p.p_over_free ?? 0) * 100)}%</span> chance this stop exceeds free time given {fmtMin(v.physical_dwell_min)} waited · median <span className="num">+{Math.round(p.median_remaining_min ?? 0)} min</span>, p90 +{Math.round(p.p90_remaining_min ?? 0)} <span className="ink-4">· {p.shift_label ? `${p.shift_label} arrivals here` : `${p.grain} history`}, n={p.n}</span></div>}
                   {v.review_reasons.length > 0 && <div className="t-warn">Review before billing: {v.review_reasons.join(" · ")}</div>}
                   {nl && nl.verdict !== "feasible" && v.next_load && !rescue && (
                     <div className="pt-1"><button onClick={() => onRescue(v.next_load!.bill_number, v.driver_name)} className="btn btn-sm btn-primary">Find a relief driver</button><span className="ml-3 ink-3">or request a revised appointment</span></div>

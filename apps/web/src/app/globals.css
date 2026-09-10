@@ -99,4 +99,22 @@ table.ledger .r { text-align: right; }
 .leaflet-control-attribution a { text-decoration: none; color: var(--ink-3); }
 .truck-icon { background: transparent; border: 0; }
 
+/* Touch targets.
+   The driver taps these in a cab: gloved, one-handed, with the truck idling. Apple's
+   and WCAG's floor is 44px and the desk's 30px controls are nowhere near it. Keyed to
+   the POINTER, not the viewport — a dispatcher on a small laptop window still has a
+   mouse and does not want fat controls, and a phone in landscape still has a finger. */
+@media (pointer: coarse) {
+  .btn { height: 44px; padding: 0 16px; font-size: 15px; }
+  .btn-sm { height: 40px; padding: 0 13px; font-size: 14px; }
+  .btn-lg { height: 54px; font-size: 17px; }
+  .field { height: 44px; font-size: 16px; }   /* 16px also stops iOS zooming the page on focus */
+  .seg-cell { height: 52px; font-size: 15px; }
+  .row-tap { padding-top: 14px; padding-bottom: 14px; font-size: 15px; }
+}
+
+/* Context that earns its place on a desk and only crowds a phone. */
+@media (max-width: 1023px) { .hide-narrow { display: none; } }
+@media (min-width: 1024px) { .board-map { height: auto !important; } }
+
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }

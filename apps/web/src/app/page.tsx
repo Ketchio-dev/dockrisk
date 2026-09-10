@@ -64,14 +64,17 @@ export default function Dispatcher() {
   const sim = snap?.sim;
 
   return (
-    <main className="flex h-screen flex-col" style={{ background: "var(--canvas)" }}>
-      <header className="surface rule-b grid items-center gap-6 px-4" style={{ gridTemplateColumns: "auto 1fr auto", height: 48 }}>
+    <main className="flex min-h-screen flex-col lg:h-screen" style={{ background: "var(--canvas)" }}>
+      {/* The desk's single 48px row assumes desk width. On a phone it wraps to two, and
+          the pieces that are context rather than control drop out (see `hide-narrow`). */}
+      <header className="surface rule-b flex flex-wrap items-center justify-between gap-x-6 gap-y-1 px-4 py-1.5 lg:grid lg:gap-6 lg:py-0"
+              style={{ gridTemplateColumns: "auto 1fr auto" }}>
         <div className="flex items-center gap-2.5">
           <Mark />
           <span className="display text-[17px]" style={{ letterSpacing: "-0.01em" }}>DockRisk</span>
-          <span className="rule-l ink-3 text-xs" style={{ borderLeft: "1px solid var(--rule)", paddingLeft: 10, marginLeft: 2 }}>Southern Ontario city desk</span>
+          <span className="hide-narrow rule-l ink-3 text-xs" style={{ borderLeft: "1px solid var(--rule)", paddingLeft: 10, marginLeft: 2 }}>Southern Ontario city desk</span>
         </div>
-        <div className="flex items-center justify-center gap-5">
+        <div className="order-3 flex w-full items-center gap-3 lg:order-none lg:w-auto lg:justify-center lg:gap-5">
           <div className="flex items-baseline gap-2">
             <span className="display text-[22px]" title="Scenario clock, America/Toronto">{sim?.sim_ts?.slice(11, 16) ?? "——:——"}</span>
             <span className="text-xs ink-3">{dateWord(sim?.sim_ts)} · ET{sim && !sim.running ? " · paused" : ""}</span>
@@ -84,18 +87,21 @@ export default function Dispatcher() {
         </div>
         <div className="flex items-center gap-5 text-xs">
           {exposure && (
-            <a href="/data" className="plain ink-3" title={exposure.wording}>
+            <a href="/data" className="hide-narrow plain ink-3" title={exposure.wording}>
               Modeled exposure <span className="display text-[15px]" style={{ color: "var(--ink)" }}>${Math.round(exposure.monthly_exposure_low / 1000)}k–{Math.round(exposure.monthly_exposure_high / 1000)}k</span> <span>/ mo</span>
             </a>
           )}
           <Nav current="/" />
         </div>
       </header>
-      <div className="grid min-h-0 flex-1 grid-cols-5">
-        <div className="col-span-3 min-h-0">
+      {/* Stacked on a phone, and the board goes FIRST: the ranked list and what to do
+          about the top row is the product. The map is the part that actually needs
+          width, so it sits underneath at a height you can still read a route in. */}
+      <div className="flex min-h-0 flex-1 flex-col-reverse lg:grid lg:grid-cols-5">
+        <div className="board-map min-h-0 lg:col-span-3" style={{ height: "min(58vh, 460px)" }}>
           <FleetMap fleet={snap?.fleet ?? []} facilities={facilities} exceptions={snap?.exceptions ?? []} selected={selected} onSelect={setSelected} />
         </div>
-        <aside className="surface col-span-2 min-h-0 space-y-7 overflow-y-auto px-4 py-3" style={{ borderLeft: "1px solid var(--rule)" }}>
+        <aside className="surface min-h-0 space-y-7 overflow-y-auto px-4 py-3 lg:col-span-2" style={{ borderLeft: "1px solid var(--rule)" }}>
           <Board fleet={snap?.fleet ?? []} visits={snap?.visits ?? []} exceptions={snap?.exceptions ?? []} assignments={snap?.assignments ?? []} charges={snap?.charges ?? []}
             selected={selected} onSelect={setSelected} onRescue={(bill, driver) => setRescue({ bill, driver })} now={sim?.sim_ts} />
           <RoadStrip exceptions={snap?.exceptions ?? []} onSelect={setSelected} />

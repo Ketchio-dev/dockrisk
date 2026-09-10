@@ -55,10 +55,10 @@ export default function Policies() {
     return (terms.evidence_quotes ?? []).find((q) => NEEDLES[k as string]?.test(q)) ?? null;
   };
   return (
-    <main className="mx-auto max-w-5xl px-6 py-5">
+    <main className="mx-auto min-w-0 max-w-5xl px-6 py-5">
       <PageHeader title="Detention terms" kicker="Policies" current="/policies" />
       <p className="mb-6 max-w-2xl text-sm ink-2">The model reads a rate confirmation and drafts the detention terms with the clause it relied on under each field. You confirm them. The engine, not the model, computes every charge.</p>
-      <div className="grid grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
         <section className="space-y-3">
           <label className="block text-[11px] ink-3">Customer<input value={customer} onChange={(e) => setCustomer(e.target.value)} className="field mt-1" /></label>
           <label className="block text-[11px] ink-3">Rate confirmation or agreement text
@@ -79,7 +79,7 @@ export default function Policies() {
                 <span>{ex.source === "extracted-llm" ? "Read by the model" : "Read by rules"}{ex.model ? ` · ${ex.model}` : ex.provider ? ` · ${ex.provider}` : ""} · the engine computes every charge</span>
                 {ex.warning && <span className="t-warn">{ex.warning}</span>}
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {([["free_time_min", "Free time, minutes"], ["rate_per_hour", "Rate, $ per hour"], ["increment_min", "Increment, minutes"], ["maximum_charge", "Maximum per stop, $"], ["minimum_charge", "Minimum, $"]] as [keyof Terms, string][]).map(([k, label]) => (
                   <Field key={k} k={k} label={label} terms={terms} setTerms={setTerms} clause={clauseFor(k)} />
                 ))}
@@ -102,13 +102,13 @@ export default function Policies() {
       </div>
       <section className="mt-10">
         <div className="mb-2 flex items-baseline justify-between"><h2 className="h">Active policies</h2><span className="label">facility overrides customer overrides default</span></div>
-        <table className="ledger table-fixed text-xs">
+        <div className="-mx-6 w-screen max-w-[calc(100%+3rem)] overflow-x-auto px-6"><table className="ledger table-fixed text-xs" style={{ minWidth: 780 }}>
           <colgroup><col /><col className="w-[72px]" /><col className="w-[80px]" /><col className="w-[64px]" /><col className="w-[72px]" /><col className="w-[240px]" /><col className="w-[200px]" /></colgroup>
           <thead><tr><th className="text-left">Scope</th><th className="r pr-3">Free</th><th className="r pr-3">Rate</th><th className="r pr-3">Incr.</th><th className="r pr-3">Cap</th><th className="text-left">Clock starts at</th><th className="text-left">Source</th></tr></thead>
           <tbody>{policies.map((p) => (
             <tr key={p.policy_id}><td className="font-medium">{p.scope === "default" ? "Default" : `${p.customer ?? p.scope}`}</td><td className="display r pr-3 text-[14px]">{p.free_time_min} min</td><td className="display r pr-3 text-[14px]">${p.rate_per_hour}/h</td><td className="display r pr-3 text-[14px]">{p.increment_min} min</td><td className="display r pr-3 text-[14px]">{p.maximum_charge ? `$${p.maximum_charge}` : "—"}</td><td className="ink-2">{RULE_WORD[p.billing_start_rule] ?? p.billing_start_rule.replace(/_/g, " ")}{p.requires_on_time_arrival ? ", on-time required" : ""}</td><td className="ink-3">{p.source}{p.confirmed_by ? ` · ${p.confirmed_by}` : ""}</td></tr>
           ))}</tbody>
-        </table>
+        </table></div>
       </section>
     </main>
   );

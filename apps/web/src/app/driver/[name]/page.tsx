@@ -9,13 +9,13 @@ const Btn = ({ children, onClick, primary = false }: { children: React.ReactNode
 );
 /** A quiet secondary action: text only, full width, left-aligned like a list row. */
 const Row = ({ children, onClick }: { children: React.ReactNode; onClick: () => void }) => (
-  <button onClick={onClick} className="rule-b w-full py-2.5 text-left text-sm ink-2">{children}</button>
+  <button onClick={onClick} className="row-tap rule-b w-full py-2.5 text-left text-sm ink-2">{children}</button>
 );
 /** One control for a set of exclusive states: a single bordered strip, the current cell filled with ink. */
 const Segmented = ({ items, value, onPick }: { items: [string, string][]; value?: string | null; onPick: (v: string) => void }) => (
   <div className="grid overflow-hidden" style={{ gridTemplateColumns: `repeat(${items.length}, 1fr)`, border: "1px solid var(--rule-strong)", borderRadius: 4 }}>
     {items.map(([v, l], i) => (
-      <button key={v} onClick={() => onPick(v)} className="h-10 text-[13px] font-medium disabled:opacity-45"
+      <button key={v} onClick={() => onPick(v)} className="seg-cell h-10 text-[13px] font-medium disabled:opacity-45"
         style={{ borderLeft: i ? "1px solid var(--rule-strong)" : undefined, background: value === v ? "var(--ink)" : "var(--surface)", color: value === v ? "#fff" : "var(--ink)" }}>{l}</button>
     ))}
   </div>

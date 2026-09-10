@@ -66,13 +66,46 @@ def build_dwell_history(conn) -> int:
     return n
 
 
+# Dock shifts, cut where the export's own numbers change rather than at round hours.
+# Overnight is thin (n<300 across the window) and behaves like early morning, so it
+# folds in rather than standing alone on a handful of stops.
+SHIFTS = [("early", 4, 8), ("morning", 8, 12), ("afternoon", 12, 16), ("evening", 16, 22), ("overnight", 22, 4)]
+SHIFT_LABEL = {"early": "early (04-08)", "morning": "morning (08-12)", "afternoon": "afternoon (12-16)",
+               "evening": "evening (16-22)", "overnight": "overnight (22-04)"}
+
+
+def _shift(hour) -> str:
+    """Which dock shift an arrival hour falls in. None -> 'unknown', kept separate so a
+    missing timestamp never borrows another shift's history."""
+    if hour is None:
+        return "unknown"
+    h = int(hour)
+    for name, a, b in SHIFTS:
+        if a <= b:
+            if a <= h < b:
+                return name
+        elif h >= a or h < b:      # the wrap-around one
+            return name
+    return "unknown"
+
+
 def build_dwell_model(conn, free_min: int = FREE_MIN_DEFAULT) -> int:
     cur = conn.cursor()
     cur.execute("DELETE FROM dwell_model")
-    rows = [dict(r) for r in cur.execute("SELECT customer, city, stop_kind, dwell_min FROM dwell_history WHERE dwell_min <= ?", (CAP_MIN,))]
+    rows = [dict(r) for r in cur.execute(
+        "SELECT customer, city, stop_kind, dwell_min, hour FROM dwell_history WHERE dwell_min <= ?", (CAP_MIN,))]
+    # Arrival hour is not noise. Across 5,904 stops in the organizers' export, a truck
+    # arriving at 07:00 goes past the two-hour line 24.7% of the time; one arriving at
+    # 19:00, 7.5%. Same customers, same docks. A model that pools the day together
+    # hands a dispatcher the average of a morning and an evening and calls it a
+    # prediction — so the ladder gets a rung for the shift before it coarsens to the
+    # facility as a whole.
     grains = {
+        "facility_shift": lambda r: f"{r['customer']}|{r['city']}|{r['stop_kind']}|{_shift(r['hour'])}",
+        "city_shift": lambda r: f"{r['city']}|{r['stop_kind']}|{_shift(r['hour'])}",
         "facility": lambda r: f"{r['customer']}|{r['city']}|{r['stop_kind']}",
         "city": lambda r: f"{r['city']}|{r['stop_kind']}",
+        "kind_shift": lambda r: f"{r['stop_kind']}|{_shift(r['hour'])}",
         "kind": lambda r: r["stop_kind"],
         "all": lambda r: "all",
     }
@@ -97,20 +130,30 @@ def build_dwell_model(conn, free_min: int = FREE_MIN_DEFAULT) -> int:
 
 
 def predict_remaining(conn, customer: str | None, city: str | None, stop_kind: str, elapsed_min: float,
-                      free_min: int = FREE_MIN_DEFAULT) -> dict:
+                      free_min: int = FREE_MIN_DEFAULT, arrival_hour: int | None = None) -> dict:
     """Conditional prediction at the nearest elapsed point at or below elapsed_min, coarsening the grain
     until n >= MIN_N_FOR_GRAIN. Always returns the grain and n it used."""
     pts = [e for e in ELAPSED_POINTS if e <= elapsed_min] or [ELAPSED_POINTS[0]]
     e = max(pts)
-    candidates = [("facility", f"{customer}|{(city or '').upper()}|{stop_kind}"), ("city", f"{(city or '').upper()}|{stop_kind}"),
-                  ("kind", stop_kind), ("all", "all")]
+    fac, cty = f"{customer}|{(city or '').upper()}|{stop_kind}", f"{(city or '').upper()}|{stop_kind}"
+    sh = _shift(arrival_hour)
+    # Most specific first. The shift rungs are skipped when we do not know the hour.
+    candidates = []
+    if sh != "unknown":
+        candidates += [("facility_shift", f"{fac}|{sh}"), ("city_shift", f"{cty}|{sh}")]
+    candidates += [("facility", fac), ("city", cty)]
+    if sh != "unknown":
+        candidates.append(("kind_shift", f"{stop_kind}|{sh}"))
+    candidates += [("kind", stop_kind), ("all", "all")]
     cur = conn.cursor()
     for grain, key in candidates:
         r = cur.execute("SELECT * FROM dwell_model WHERE grain=? AND key=? AND elapsed_min=?", (grain, key, e)).fetchone()
         if r and r["n"] >= MIN_N_FOR_GRAIN:
             return {"grain": grain, "key": key, "elapsed_point_min": e, "n": r["n"], "p_over_free": r["p_over_free"],
                     "median_remaining_min": r["median_remaining_min"], "p90_remaining_min": r["p90_remaining_min"],
-                    "free_min": free_min, "note": "empirical, conditional on having already waited this long; n shown"}
+                    "free_min": free_min, "shift": sh if grain.endswith("_shift") else None,
+                    "shift_label": SHIFT_LABEL.get(sh) if grain.endswith("_shift") else None,
+                    "note": "empirical, conditional on having already waited this long; n shown"}
     return {"grain": None, "n": 0, "note": "no history at any grain"}
 
 

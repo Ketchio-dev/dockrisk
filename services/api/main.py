@@ -54,6 +54,11 @@ def now_sim() -> datetime:
     return datetime.fromisoformat(r["sim_ts"]) if r else datetime.now().replace(microsecond=0)
 
 
+def _p(v) -> datetime | None:
+    """Parse a stored timestamp; None stays None so a missing one never guesses an hour."""
+    return datetime.fromisoformat(v) if v else None
+
+
 def _poly(coords):
     return json.dumps({"type": "Polygon", "coordinates": [coords]})
 
@@ -517,13 +522,76 @@ def drive_to_safe_h(facility_id: int, closures: list[Closure] | None = None) -> 
     return {"base_h": base, "road_extra_h": road["extra_h"], "h": round(base + road["extra_h"], 2), "closures": [c.title or c.id for c in road["closures"]]}
 
 
+def next_action(v, clocks, pred, hos, nxt, fac) -> dict | None:
+    """What the dispatcher should DO, not what is true.
+
+    Every number on this board is already a fact the desk can read. The question a
+    dispatcher actually holds is narrower — do I move this load or not, do I bill this
+    or send it back — and a screen that answers it in numbers is asking them to do the
+    last step themselves, every time, under time pressure. So the same state that
+    produces the verdict produces one imperative, ranked, with the reason attached.
+
+    Returns the single most urgent one; the rest stay visible as the numbers they
+    came from.
+    """
+    acts = []
+    nl = (hos or {}).get("next_load") or {}
+    verdict = nl.get("verdict")
+
+    # 1. A load that cannot be run is the only thing worth interrupting for.
+    if verdict and verdict != "feasible" and nxt:
+        bill = nxt.get("bill_number") or "the next load"
+        if verdict.startswith("infeasible even at arrival"):
+            acts.append((0, f"Re-book {bill} — it was already impossible when the truck arrived",
+                         "not a detention problem: the appointment could not have been met from this stop"))
+        else:
+            short = nl.get("without_more_wait", {}).get("margin_h")
+            why = verdict if short is None else f"{verdict} · released right now the margin is {short:+.2f} h"
+            acts.append((1, f"Reassign {bill} now", why))
+
+    # 2. Money that is about to start, while the driver is still standing there.
+    mtb = clocks.get("minutes_until_billable")
+    if mtb is not None and 0 < mtb <= 30 and v["state"] not in TERMINAL_STATES:
+        p_over = (pred or {}).get("p_over_free")
+        why = f"{mtb:.0f} min to billable"
+        if p_over is not None and (pred or {}).get("n"):
+            why += f" · {p_over*100:.0f}% of stops like this go over (n={pred['n']}"
+            why += f", {pred['shift_label']})" if pred.get("shift_label") else ")"
+        acts.append((2, "Call the dock — ask for a door or a release time", why))
+
+    # 3. The clock is running on evidence we do not have.
+    if v["state"] not in TERMINAL_STATES and not v["checked_in_ts"] and (mtb is None or mtb < 90):
+        acts.append((3, "Get the driver to tap check-in",
+                     "without it the billing clock starts at the later of gate entry and appointment, and the charge is arguable"))
+
+    # 4. A charge that must not go out as it stands.
+    if v["review_required"]:
+        reasons = json.loads(v["review_reasons"] or "[]")
+        acts.append((4, "Hold this charge for review before billing", reasons[0] if reasons else "evidence incomplete"))
+
+    # 5. Nothing wrong now, but this dock is a bad hour to send trucks to.
+    if pred and pred.get("shift_label") and (pred.get("p_over_free") or 0) >= 0.5 and (pred.get("n") or 0) >= 10 and not acts:
+        acts.append((6, f"Book this dock outside {pred['shift']} next time",
+                     f"{pred['p_over_free']*100:.0f}% of {pred['shift_label']} arrivals here pass free time (n={pred['n']})"))
+
+    if not acts:
+        return None
+    rank, do, why = sorted(acts)[0]
+    return {"do": do, "why": why, "rank": rank, "count": len(acts)}
+
+
 def visit_detail(visit_id: int, now: datetime) -> dict:
     v = S.visits.get(visit_id)
     clocks = S.visits.three_clocks(visit_id, now)
     fac = row("SELECT facility_id, name, customer, city, source, confidence FROM facilities WHERE facility_id=?", v["facility_id"])
     elapsed = clocks["physical_dwell_min"]
+    # Arrival hour changes the answer: at one Milton consignee a 07:00 delivery goes past free
+    # time every time in the export (n=32), a 14:00 one 12% of the time (n=17). Pooling
+    # the day together would hand the dispatcher the average of the two.
+    entered_ts = _p(v["property_entered_ts"]) or _p(v["approach_ts"])
     pred = predict_remaining(S.conn, v.get("bill_number") and (row("SELECT customer FROM orders WHERE bill_number=?", v["bill_number"]) or {}).get("customer"),
-                             fac["city"] if fac else None, v["stop_kind"] if v["stop_kind"] in ("pickup", "delivery") else "delivery", elapsed) if v["state"] not in TERMINAL_STATES else None
+                             fac["city"] if fac else None, v["stop_kind"] if v["stop_kind"] in ("pickup", "delivery") else "delivery", elapsed,
+                             arrival_hour=entered_ts.hour if entered_ts else None) if v["state"] not in TERMINAL_STATES else None
     hos_margin = None
     closures = active_closures()
     if v["driver_name"] and duty_log(v["driver_name"]) and v["state"] not in TERMINAL_STATES:
@@ -573,6 +641,7 @@ def visit_detail(visit_id: int, now: datetime) -> dict:
         nxt = {k: nxt[k] for k in ("bill_number", "orig_city", "dest_city", "pickup_by_start", "pickup_by_end")}
     return {**clocks, "facility": fac, "events": rows("SELECT * FROM visit_events WHERE visit_id=? ORDER BY ts, event_id", visit_id),
             "prediction": pred, "hos": hos_margin, "next_load": nxt,
+            "next_action": next_action(v, clocks, pred, hos_margin, nxt, fac),
             "timestamps": {k: v[k] for k in ("appointment_start_ts", "approach_ts", "property_entered_ts", "checked_in_ts", "at_dock_ts", "service_complete_ts", "released_ts", "gate_exited_ts")},
             "on_time": v["on_time"], "review_required": v["review_required"]}
 

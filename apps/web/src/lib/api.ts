@@ -13,7 +13,9 @@ export type FleetRow = {
   unit: string; driver_name: string | null; lat: number; lon: number; speed_kmh: number; heading: number | null; odometer_km: number | null;
   duty_status: string | null; sim_ts: string; visit: { visit_id: number; state: string; facility_id: number } | null; hos?: Hos;
 };
-export type Prediction = { grain: string | null; n: number; p_over_free?: number; median_remaining_min?: number; p90_remaining_min?: number; note?: string };
+export type Prediction = { grain: string | null; n: number; p_over_free?: number; median_remaining_min?: number; p90_remaining_min?: number; note?: string; shift?: string | null; shift_label?: string | null };
+// What the desk should DO about this row, not what is true about it. rank 0 is the most urgent.
+export type NextAction = { do: string; why: string; rank: number; count: number };
 export type PlanCheck = { feasible: boolean; margin_h: number; breaks_at: string | null; binding: string };
 export type VisitHos = {
   wait_more_min: number; drive_to_safe_h: number; road_extra_h: number; road_events: string[]; margin_h: number; binding: string; feasible: boolean; first_violation: string | null;
@@ -25,7 +27,7 @@ export type Visit = {
   clock_start_ts: string | null; policy: { free_time_min: number; rate_per_hour: number; billing_start_rule: string; scope: string; source: string };
   review_reasons: string[]; confidence: number; facility: { facility_id: number; name: string; customer: string | null; city: string; source: string; confidence: number } | null;
   events: { ts: string; state_from: string | null; state_to: string; source: string; confidence: number | null; actor: string | null; note: string | null }[];
-  prediction: Prediction | null; hos: VisitHos | null;
+  prediction: Prediction | null; hos: VisitHos | null; next_action: NextAction | null;
   next_load: { bill_number: string; orig_city: string; dest_city: string; pickup_by_start: string | null; pickup_by_end: string | null } | null;
   timestamps: Record<string, string | null>; on_time: number | null; review_required: number;
 };
