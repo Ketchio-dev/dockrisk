@@ -1,0 +1,28 @@
+# The Vercel project's Root Directory is apps/web, so only that subtree is built — but the
+# whole repo is uploaded unless it is listed here, and the repo carries 774 MB of recording
+# scratch (one .wav over the 100 MB per-file limit), a Python venv, and two node_modules.
+# Deploying from the root without this file fails on the file size limit.
+
+.git
+.demo-logs
+artifacts
+
+# installed and generated
+node_modules
+.next
+.venv
+__pycache__
+*.pyc
+
+# the API, the simulator and their data live on the VPS, not here
+services
+data
+deploy
+
+# recordings, deck assets and research — none of it is served by the web app
+docs
+scripts
+
+# satellite tiles are cached at request time; a read-only serverless disk cannot use a
+# prebuilt cache, and it is 11 MB of upload
+apps/web/.tile-cache
