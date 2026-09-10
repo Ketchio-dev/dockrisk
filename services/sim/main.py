@@ -389,14 +389,25 @@ class Sim:
         self.seed_api(reset)
         print(f"[{self.t:%H:%M}] scenario rebuilt (seed {self.seed})", flush=True)
 
-    def run(self, max_sim_hours: float):
+    def run(self, max_sim_hours: float, loop_s: float = 0.0):
         end = self.t + timedelta(hours=max_sim_hours)
         wall_per_tick = self.tick / self.speed
         n = 0
         while True:
             if self.t >= end or not any(tr.state not in ("done", "standby") for tr in self.trucks):
-                # finished: idle until the UI resets, so the demo can be replayed without restarting the process
                 self.post("/sim/clock", {"sim_ts": self.t.isoformat(sep=" "), "speed": self.speed, "running": False})
+                if loop_s > 0:
+                    # Unattended: nobody is going to press Reset on a link a judge opened. Start the
+                    # next replay on our own, wiping state first so days of running do not pile up
+                    # visits and charges. A human pressing Reset in the meantime just starts it sooner.
+                    print(f"scenario finished — next replay in {loop_s:.0f}s", flush=True)
+                    deadline = time.time() + loop_s
+                    while time.time() < deadline and self.control() != "reset":
+                        time.sleep(1.0)
+                    self.rebuild(reset=True)
+                    end = self.t + timedelta(hours=max_sim_hours)
+                    continue
+                # attended: idle until the UI resets, so the demo can be replayed without restarting the process
                 print("scenario finished — waiting for reset", flush=True)
                 while self.control() != "reset":
                     time.sleep(1.0)
@@ -440,13 +451,15 @@ def main():
     ap.add_argument("--tick", type=int, default=30, help="sim seconds per ping")
     ap.add_argument("--seed", type=int, default=7)
     ap.add_argument("--hours", type=float, default=7.0, help="sim hours per replay; the process then waits for a UI reset")
+    ap.add_argument("--loop", type=float, default=0.0, metavar="SECONDS",
+                    help="wall seconds to hold on the finished scenario before replaying it; 0 waits for a UI reset instead")
     ap.add_argument("--reset", action="store_true")
     a = ap.parse_args()
     sim = Sim(a.api, a.speed, a.tick, a.seed)
     sim.build_dock_squeeze()
     sim.seed_api(a.reset)
     print(f"scenario {a.scenario}: {len(sim.trucks)} trucks, hero {sim.hero.driver}/{sim.hero.unit}, start {sim.t}, speed x{a.speed}", flush=True)
-    sim.run(a.hours)
+    sim.run(a.hours, a.loop)
 
 
 if __name__ == "__main__":
