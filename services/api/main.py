@@ -312,14 +312,18 @@ class ClockIn(BaseModel):
 
 @app.get("/sim/clock")
 def get_clock():
-    return row("SELECT * FROM sim_clock WHERE id=1") or {"sim_ts": datetime.now().isoformat(sep=" "), "running": 0}
+    r = row("SELECT * FROM sim_clock WHERE id=1")
+    # `resetting` says the simulator has not yet written the rebuilt clock, so a caller
+    # can wait for the scenario rather than trust a stale or wall-clock timestamp.
+    return r or {"sim_ts": datetime.now().isoformat(sep=" "), "running": 0, "resetting": 1}
 
 
 @app.post("/sim/clock")
 def set_clock(c: ClockIn):
     S.conn.execute("""INSERT INTO sim_clock (id, sim_ts, speed, running, scenario, seed, updated_wall_ts) VALUES (1,?,?,?,?,?,?)
                       ON CONFLICT(id) DO UPDATE SET sim_ts=excluded.sim_ts, speed=excluded.speed, running=excluded.running,
-                      scenario=COALESCE(excluded.scenario, sim_clock.scenario), seed=COALESCE(excluded.seed, sim_clock.seed), updated_wall_ts=excluded.updated_wall_ts""",
+                      scenario=COALESCE(excluded.scenario, sim_clock.scenario), seed=COALESCE(excluded.seed, sim_clock.seed),
+                      updated_wall_ts=excluded.updated_wall_ts, resetting=0""",
                    (c.sim_ts, c.speed, int(c.running), c.scenario, c.seed, datetime.now().isoformat(sep=" ")))
     S.conn.commit()
     return get_clock()
@@ -347,7 +351,10 @@ def sim_reset():
     """Wipe live state (telemetry, visits, charges, duty, assignments, exceptions). Reference data stays."""
     for t in ("telemetry", "geofence_events", "stop_visits", "visit_events", "detention_charges", "duty_events", "assignments", "exceptions"):
         S.conn.execute(f"DELETE FROM {t}")
-    S.conn.execute("DELETE FROM sim_clock")
+    # Keep the row: a missing one makes every reader fall back to wall-clock time, which
+    # puts today's real date in the header for the second or two before the simulator
+    # rebuilds — and makes "has the reset finished?" unanswerable.
+    S.conn.execute("UPDATE sim_clock SET running=0, resetting=1, updated_wall_ts=? WHERE id=1", (datetime.now().isoformat(sep=" "),))
     S.conn.commit()
     S.tracker.reset()
     return {"ok": True}

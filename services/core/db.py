@@ -148,7 +148,11 @@ CREATE TABLE IF NOT EXISTS detention_policies (
 CREATE TABLE IF NOT EXISTS sim_clock (
   id INTEGER PRIMARY KEY CHECK (id = 1),
   sim_ts TEXT NOT NULL, speed REAL NOT NULL DEFAULT 1.0, running INTEGER NOT NULL DEFAULT 0,
-  scenario TEXT, seed INTEGER, updated_wall_ts TEXT
+  scenario TEXT, seed INTEGER, updated_wall_ts TEXT,
+  -- 1 between a reset and the simulator writing the rebuilt clock. Without it a reader
+  -- cannot tell a rebuilt scenario from a stale one, and a deleted row would make every
+  -- caller fall back to wall-clock time.
+  resetting INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS telemetry (
@@ -257,8 +261,17 @@ def connect(path: Path = DB_PATH) -> sqlite3.Connection:
     return conn
 
 
+# Columns added after a table shipped. CREATE TABLE IF NOT EXISTS leaves an existing table
+# alone, so a database made before the column existed needs the ALTER spelled out.
+ADDED_COLUMNS = [("sim_clock", "resetting", "INTEGER NOT NULL DEFAULT 0")]
+
+
 def init_schema(conn: sqlite3.Connection) -> None:
     conn.executescript(DDL)
+    for table, column, decl in ADDED_COLUMNS:
+        have = {r["name"] for r in conn.execute(f"PRAGMA table_info({table})")}
+        if column not in have:
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {decl}")
     conn.execute(
         """INSERT OR IGNORE INTO detention_policies
            (policy_id, scope, free_time_min, rate_per_hour, increment_min, billing_start_rule,

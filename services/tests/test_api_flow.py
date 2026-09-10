@@ -88,3 +88,36 @@ def test_rescue_ranks_a_standby_driver_and_explains_blockers(client):
     assert acc["status"] == "accepted"
     active = [a for a in client.get("/assignments").json() if a["bill_number"] == bill and a["status"] == "accepted"]
     assert [a["driver_name"] for a in active] == [d1]   # the previous holder was superseded
+
+
+def test_reset_leaves_a_clock_the_simulator_reads_as_a_reset(client):
+    """The reset contract, in both directions.
+
+    The row survives the reset so that no reader falls back to wall-clock time — the
+    dashboard header would otherwise show today's real date for the second or two before
+    the scenario is rebuilt. In exchange the simulator can no longer notice a reset by the
+    row vanishing, so it has to see the flag instead; before it did, pressing Reset left
+    the simulator sitting in its idle loop forever.
+    """
+    from sim.main import Sim
+
+    client.post("/sim/clock", json={"sim_ts": "2026-09-08 11:45:00", "speed": 60, "running": True,
+                                    "scenario": "dock_squeeze", "seed": 7})
+    assert client.post("/sim/reset").json()["ok"] is True
+
+    c = client.get("/sim/clock").json()
+    assert c["id"] == 1, "the row must survive the reset"
+    assert c["resetting"] == 1 and not c["running"]
+    assert c["sim_ts"].startswith("2026-09-08"), "a scenario timestamp, never wall time"
+
+    sim = object.__new__(Sim)
+    sim.speed = 60.0
+    sim.get = lambda _path: c
+    assert sim.control() == "reset"
+
+    # And the rebuilt clock clears the flag, so the simulator does not reset in a loop.
+    client.post("/sim/clock", json={"sim_ts": "2026-09-08 07:30:00", "speed": 60, "running": True})
+    after = client.get("/sim/clock").json()
+    assert after["resetting"] == 0
+    sim.get = lambda _path: after
+    assert sim.control() == "run"

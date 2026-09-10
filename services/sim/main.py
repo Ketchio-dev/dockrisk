@@ -361,12 +361,18 @@ class Sim:
                                                                "s.76 adverse conditions: possible 2 h extension — eligibility not assumed, review required"]})
 
     def control(self) -> str:
-        """Read the shared clock row. Returns 'run', 'pause' or 'reset' (row missing => the UI reset the scenario)."""
+        """Read the shared clock row. Returns 'run', 'pause' or 'reset'.
+
+        A reset now raises the row's `resetting` flag and leaves the row in place, so that
+        readers keep a scenario timestamp instead of falling back to wall time. The missing
+        row is still treated as a reset: a database written before the flag existed, or one
+        wiped by hand, has no other way to say it.
+        """
         try:
             c = self.get("/sim/clock")
         except Exception:
             return "run"
-        if "id" not in c:
+        if "id" not in c or c.get("resetting"):
             return "reset"
         if c.get("speed") and float(c["speed"]) != self.speed:
             self.speed = float(c["speed"])
