@@ -90,11 +90,17 @@ OPEN_HERO="
 echo "==> resetting the scenario"
 for i in $(seq 1 30); do snap | jq -e '.assignments|length>0' >/dev/null 2>&1 && break; sleep 1; done
 p $A/sim/reset -d '{}' >/dev/null
-for i in $(seq 1 90); do
-  t=$(snap | jq -r '.sim.sim_ts[11:16]' 2>/dev/null || echo 99:99)
-  [[ "$t" < "08:00" ]] && break
+# Wait for the SCENARIO clock, not a bare hour. A reset used to delete the clock row,
+# after which every reader fell back to wall time — and a wall clock that happens to
+# read 07:59 looks exactly like a rebuilt scenario at 07:30. Watch the date and the
+# resetting flag instead.
+for i in $(seq 1 120); do
+  ts=$(curl -s $A/sim/clock 2>/dev/null | jq -r '"\(.sim_ts) \(.resetting // 0)"' 2>/dev/null || echo "? 1")
+  d=${ts:0:10}; hm=${ts:11:5}; flag=${ts##* }
+  [[ "$flag" == "0" && "$d" == "2026-09-08" && "$hm" < "08:00" ]] && { echo "    scenario at $d $hm"; break; }
   sleep 1
 done
+[[ "${d:-}" == "2026-09-08" ]] || { echo "!! simulator never rebuilt the scenario (clock reads ${ts:-?})" >&2; exit 1; }
 # The deck needs no simulator, and letting it run at SEEK through three clips
 # (plus a Chrome boot each) burned five simulated hours before the live section
 # even started — by which point the hero's visit had closed.
@@ -145,12 +151,14 @@ seek; until_t 12:20; pause
 clip 10 10-charge "$W/" 1440 900
 clip 11 11-packet "$W/evidence/$V" 1440 900
 
-echo "==> 3/4  the proof (live)"
-clip 12 12-replay "$W/data" 1440 900
+echo "==> 3/4  the hour, and the proof (live)"
+# 12 is the shift argument: open the hero row, where the prediction now names the
+# shift it used ("morning (08-12) arrivals here, n=11") rather than a flat average.
+clip 12 12-shift "$W/" 1440 900 "$OPEN_HERO"
+clip 13 13-replay "$W/data" 1440 900
 
-echo "==> 4/4  limits and close (deck)"
-deck 13 13-limits 12
-deck 14 14-close  15
+echo "==> 4/4  close (deck)"
+deck 14 14-close 15
 
 echo "==> stitching"
 LIST="$OUT/concat.txt"; : > "$LIST"

@@ -54,7 +54,9 @@ def blocks() -> list[tuple[str, str]]:
         if line.startswith(">") and current:
             # "[pause]" is a direction to the reader, not a word. The synthesizer
             # would say it out loud; a sentence break makes it draw breath instead.
-            said.append(re.sub(r"\s*\[pause\]\s*", " ... ", line.lstrip("> ")).strip())
+            t = re.sub(r"\s*\[pause\]\s*", " ... ", line.lstrip("> "))
+            t = t.replace("**", "")           # markdown emphasis is for the reader, not the voice
+            said.append(t.strip())
     if current and said:
         out.append((current, " ".join(said)))
     return out
