@@ -11,13 +11,14 @@ export function ChargesList({ charges }: { charges: Charge[] }) {
     <section>
       <div className="mb-2 flex items-baseline justify-between"><h2 className="h">Detention charges</h2><span className="label">drafts from this run · engine-computed</span></div>
       <table className="ledger table-fixed text-xs">
-        <colgroup><col /><col className="w-[64px]" /><col className="w-[56px]" /><col className="w-[68px]" /><col className="w-[108px]" /></colgroup>
+        <colgroup><col /><col className="c-qual" /><col className="c-bill" /><col className="c-amt" /><col className="c-status" /></colgroup>
         <thead><tr><th className="text-left">Stop</th><th className="r pr-2">Qualifying</th><th className="r pr-2">Billable</th><th className="r pr-2">Amount</th><th className="r">Status</th></tr></thead>
         <tbody>
           {shown.map((c) => (
             <tr key={c.charge_id}>
               <td className="pr-2">
-                <div className="truncate">{c.facility_name} <span className="mono ink-3">· {c.bill_number ?? "no bill"}</span> · <a href={`/evidence/${c.visit_id}`} target="_blank">Packet</a></div>
+                {/* The stop is what the amount is *for*; truncated to "London D…" the row says nothing. */}
+                <div className="line-clamp-3 sm:truncate">{c.facility_name} <span className="mono ink-3">· {c.bill_number ?? "no bill"}</span> · <a href={`/evidence/${c.visit_id}`} target="_blank">Packet</a></div>
                 <div className="text-[11px] ink-3">{c.party}{c.review_required ? <span className="t-warn" title={c.reason_codes.join("; ")}> · {c.reason_codes.length} to review</span> : " · ready"}</div>
               </td>
               <td className="num r pr-2">{fmtMin(c.qualifying_dwell_min)}</td>
@@ -25,7 +26,7 @@ export function ChargesList({ charges }: { charges: Charge[] }) {
               <td className="display r pr-2 text-[14px]">${c.amount.toFixed(2)}</td>
               <td className="r" style={{ paddingTop: 5, paddingBottom: 5 }}>
                 {c.status === "draft" ? (
-                  <button disabled={busy === c.charge_id} onClick={() => approve(c.charge_id, "approved")} title={c.review_required ? "Approving acknowledges the review reasons listed" : "Approve draft"} className="btn btn-sm">{c.review_required ? "Approve, noted" : "Approve"}</button>
+                  <button disabled={busy === c.charge_id} onClick={() => approve(c.charge_id, "approved")} title={c.review_required ? "Approving acknowledges the review reasons listed" : "Approve draft"} className="btn btn-sm">Approve{c.review_required ? <span className="hidden sm:inline">, noted</span> : null}</button>
                 ) : <span className="ink-3">{c.status}</span>}
               </td>
             </tr>

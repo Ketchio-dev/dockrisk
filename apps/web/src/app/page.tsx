@@ -74,7 +74,10 @@ export default function Dispatcher() {
           <span className="display text-[17px]" style={{ letterSpacing: "-0.01em" }}>DockRisk</span>
           <span className="hide-narrow rule-l ink-3 text-xs" style={{ borderLeft: "1px solid var(--rule)", paddingLeft: 10, marginLeft: 2 }}>Southern Ontario city desk</span>
         </div>
-        <div className="order-3 flex w-full items-center gap-3 lg:order-none lg:w-auto lg:justify-center lg:gap-5">
+        {/* Clock, controls and the freshness badge overrun a phone by six pixels, and the badge
+            is what falls off the end — the one piece that says whether any of it is current.
+            Let the row wrap rather than push it out of the viewport. */}
+        <div className="order-3 flex w-full flex-wrap items-center gap-x-3 gap-y-1 lg:order-none lg:w-auto lg:flex-nowrap lg:justify-center lg:gap-5">
           <div className="flex items-baseline gap-2">
             <span className="display text-[22px]" title="Scenario clock, America/Toronto">{sim?.sim_ts?.slice(11, 16) ?? "——:——"}</span>
             <span className="text-xs ink-3">{dateWord(sim?.sim_ts)} · ET{sim && !sim.running ? " · paused" : ""}</span>

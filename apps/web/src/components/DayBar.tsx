@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
+
 /**
  * The day bar: one truck's day on a time axis. Duty segments are the ground (off / on duty / driving),
  * the visit's free time and billable time sit on top, and the legal limits are ticks. It is the picture
@@ -34,18 +36,38 @@ export function DayBar({ window: [t0, t1], now, segments, bands = [], marks = []
   const frac = (t: number) => Math.max(0, Math.min(1, (t - t0) / (t1 - t0)));
   const pct = (t: number) => `${frac(t) * 100}%`;
   const span = (a: number, b: number) => ({ left: pct(a), width: `calc(${pct(b)} - ${pct(a)})` });
-  // labels near the right edge hang to the left of their anchor so they stay inside the bar
-  const hangs = (t: number) => frac(t) > 0.82;
-  const anchor = (t: number, pad = 4): React.CSSProperties => (hangs(t) ? { left: pct(t), transform: `translateX(calc(-100% - ${pad}px))` } : { left: `calc(${pct(t)} + ${pad}px)` });
-  // Two labels on one row collide when their anchors are closer than the text is wide; the later one drops
-  // to a second line. Width is estimated at 5.6 px per character of 10 px Plex, measured against a 560 px bar.
-  // Keyed by `${t}|${text}`; row 0 or 1.
-  const EST = 5.6 / 560;
+
+  // Label positions are fractions of the bar, but label widths are pixels, so the bar has to
+  // know how wide it actually is. Assuming a desk-width 560 px bar made every estimate 1.5x
+  // too small on a phone: collisions went undetected ("now" printed over "legal stop") and
+  // the pickup-window label ran off the screen. Measure instead; 560 is only the first paint.
+  const box = useRef<HTMLDivElement | null>(null);
+  const [boxW, setBoxW] = useState(560);
+  useEffect(() => {
+    const el = box.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(([e]) => {
+      const w = Math.round(e.contentRect.width);
+      if (w > 0) setBoxW((prev) => (w === prev ? prev : w));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  // 5.6 px per character of 10 px Plex, as a fraction of the bar. +2 characters covers the
+  // anchor pad and a breath between neighbours.
+  const EST = 5.6 / boxW;
+  const width = (text: string) => (text.length + 2) * EST;
+  // A label hangs to the left of its anchor when printing it rightwards would leave the bar.
+  const hangs = (t: number, text?: string) => (text ? frac(t) + width(text) > 1 : frac(t) > 0.82);
+  const anchor = (t: number, pad = 4, text?: string): React.CSSProperties =>
+    hangs(t, text) ? { left: pct(t), transform: `translateX(calc(-100% - ${pad}px))` } : { left: `calc(${pct(t)} + ${pad}px)` };
+  // Two labels on one row collide when their anchors are closer than the text is wide; the later
+  // one drops to a second line. Keyed by `${t}|${text}`; row 0 or 1.
   const rowOf = (items: { t: number; text: string }[]): Record<string, 0 | 1> => {
     const out: Record<string, 0 | 1> = {}; const taken: [number, number][] = [];
     for (const it of [...items].sort((a, b) => a.t - b.t)) {
-      const w = (it.text.length + 2) * EST; const f = frac(it.t);   // +2 chars: the anchor pad and a breath between labels
-      const [a, b] = hangs(it.t) ? [f - w, f] : [f, f + w];
+      const w = width(it.text); const f = frac(it.t);
+      const [a, b] = hangs(it.t, it.text) ? [f - w, f] : [f, f + w];
       const r = taken.some(([x, y]) => a < y && b > x) ? 1 : 0;
       if (r === 0) taken.push([a, b]);
       out[`${it.t}|${it.text}`] = r;
@@ -78,7 +100,7 @@ export function DayBar({ window: [t0, t1], now, segments, bands = [], marks = []
   const lbl = "absolute whitespace-nowrap text-[10px] leading-none";
 
   return (
-    <div className="relative w-full" style={{ height: total }} aria-hidden>
+    <div ref={box} className="relative w-full" style={{ height: total }} aria-hidden>
       <div className="absolute" style={{ top, height: barH, left: 0, right: 0, background: "var(--surface-2)", boxShadow: "inset 0 0 0 1px var(--rule)" }} />
       {segments.map((s, i) => { const a = Math.max(ms(s.start), t0), b = Math.min(ms(s.end), t1); if (!(b > a)) return null;
         return <div key={i} className="absolute" style={{ top, height: barH, ...span(a, b), background: segColor[s.status] ?? "var(--duty-on)" }} />; })}
@@ -87,7 +109,7 @@ export function DayBar({ window: [t0, t1], now, segments, bands = [], marks = []
         return (
           <div key={i}>
             <div className="absolute" style={{ top: isPickup ? top - 5 : top, height: isPickup ? 5 : barH, ...span(a, z), ...bandStyle[b.kind] }} />
-            {!compact && b.label && <span className={lbl} style={{ top: belowY + (belowRow[`${a}|${b.label}`] ?? 0) * LH, ...anchor(a, 0), color: b.kind === "billable" ? "#8a5a12" : "var(--ink-2)" }}>{b.label}</span>}
+            {!compact && b.label && <span className={lbl} style={{ top: belowY + (belowRow[`${a}|${b.label}`] ?? 0) * LH, ...anchor(a, 0, b.label), color: b.kind === "billable" ? "#8a5a12" : "var(--ink-2)" }}>{b.label}</span>}
           </div>
         );
       })}
@@ -96,14 +118,14 @@ export function DayBar({ window: [t0, t1], now, segments, bands = [], marks = []
         return (
           <div key={i}>
             <div className="absolute" style={{ top: top - (compact ? 0 : 3), height: barH + (compact ? 0 : 6), left: pct(t), width: 2, marginLeft: -1, background: c }} />
-            {!compact && m.label && <span className={`${lbl} font-medium`} style={{ top: m.below ? belowY + (belowRow[`${t}|${m.label}`] ?? 0) * LH : 2 + (aboveRow[`${t}|${m.label}`] ?? 0) * LH, ...anchor(t), color: c }}>{m.label}</span>}
+            {!compact && m.label && <span className={`${lbl} font-medium`} style={{ top: m.below ? belowY + (belowRow[`${t}|${m.label}`] ?? 0) * LH : 2 + (aboveRow[`${t}|${m.label}`] ?? 0) * LH, ...anchor(t, 4, m.label), color: c }}>{m.label}</span>}
           </div>
         );
       })}
       {n >= t0 && n <= t1 && (
         <>
           <div className="absolute" style={{ top: top - (compact ? 2 : 6), height: barH + (compact ? 4 : 12), left: pct(n), width: 2, marginLeft: -1, background: "var(--ink)" }} />
-          {!compact && nowLabel && <span className={`${lbl} font-semibold`} style={{ top: 2 + (aboveRow[`${n}|${nowLabel}`] ?? 0) * LH, ...anchor(n), color: "var(--ink)" }}>{nowLabel}</span>}
+          {!compact && nowLabel && <span className={`${lbl} font-semibold`} style={{ top: 2 + (aboveRow[`${n}|${nowLabel}`] ?? 0) * LH, ...anchor(n, 4, nowLabel), color: "var(--ink)" }}>{nowLabel}</span>}
         </>
       )}
       {!compact && hours.map((t) => (

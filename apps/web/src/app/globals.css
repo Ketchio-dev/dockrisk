@@ -117,4 +117,19 @@ table.ledger .r { text-align: right; }
 @media (max-width: 1023px) { .hide-narrow { display: none; } }
 @media (min-width: 1024px) { .board-map { height: auto !important; } }
 
+/* A board row is three columns on a desk — who, the day bar, the number. A phone has no room
+   for a 128 px day bar, and squeezing one in costs the status word its last letters, which is
+   the one thing the row exists to say. Below 640 px the bar drops out and the text takes the
+   width back; the desk layout is untouched. */
+.board-row { grid-template-columns: minmax(0, 1fr) auto; }
+@media (min-width: 640px) { .board-row-3 { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) auto; } }
+
+/* The charges ledger is table-fixed, so its four right-hand columns take their width off the
+   top and leave the stop name whatever remains — 58 px on a phone, which is "London D…". Give
+   the numbers less on a narrow screen and the name enough to wrap into. */
+.c-qual { width: 64px; } .c-bill { width: 56px; } .c-amt { width: 68px; } .c-status { width: 108px; }
+@media (max-width: 639px) {
+  .c-qual { width: 52px; } .c-bill { width: 44px; } .c-amt { width: 62px; } .c-status { width: 76px; }
+}
+
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }

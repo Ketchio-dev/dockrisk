@@ -111,12 +111,12 @@ export function Board({ fleet, visits, exceptions, assignments, charges, selecte
           const headlineLabel = v ? (clockPending ? "billing clock" : mtb == null ? "detention" : "billable in") : "on duty left";
           return (
             <div key={r.unit} className={`rule-b pl-3 ${open ? "surface-2 py-3" : "py-2"} ${bar}`}>
-              <button className="grid w-full items-center gap-3 text-left" style={{ gridTemplateColumns: open ? "1fr auto" : "minmax(0,1.35fr) minmax(0,1fr) auto" }} onClick={() => onSelect(open && selected ? null : r.unit)}>
-                <span className="min-w-0 truncate text-sm">
+              <button className={`board-row grid w-full items-center gap-3 text-left ${open ? "" : "board-row-3"}`} onClick={() => onSelect(open && selected ? null : r.unit)}>
+                <span className="min-w-0 text-sm line-clamp-2 sm:truncate">
                   <span className="font-medium">{r.driver ?? r.unit}</span> <span className="mono ink-3">{r.unit}</span>
                   <span className="ink-3"> · {v ? `${v.facility?.name ?? "facility"} · ${v.stop_kind}` : r.status.tone === "muted" ? r.status.word.toLowerCase() : "on the road"}</span>
                 </span>
-                {!open && model && <span className="pr-2"><DayBar window={model.win} now={t} segments={model.segs} bands={model.bands} marks={model.marks} compact /></span>}
+                {!open && model && <span className="hidden pr-2 sm:block"><DayBar window={model.win} now={t} segments={model.segs} bands={model.bands} marks={model.marks} compact /></span>}
                 <span className="flex shrink-0 items-baseline gap-2 pr-3 text-right">
                   {!open && <span className="display text-[15px]" title={headlineLabel}>{headline}</span>}
                   <span className={`text-xs font-medium ${toneCls(r.status.tone)}`}>{r.status.word}</span>
@@ -208,8 +208,10 @@ export function RoadStrip({ exceptions, onSelect }: { exceptions: Exception[]; o
       <div className="mb-2 flex items-baseline justify-between"><h2 className="h">Road</h2><span className="label">Ontario 511 · live · near your trucks</span></div>
       <div className="rule-t">
         {road.slice(0, 3).map((e) => (
-          <button key={e.exception_id} onClick={() => onSelect(e.unit)} className="rule-b flex w-full items-baseline justify-between gap-3 py-1.5 text-left text-xs">
-            <span className="truncate ink-2" title={e.title}>{e.title.replace(/^\[511 live\] /, "").split(" — ")[0]}</span>
+          // On a phone the road name and the trucks it touches will not share a line: one of
+          // them ends up an ellipsis. Stack them instead — the whole point is which highway.
+          <button key={e.exception_id} onClick={() => onSelect(e.unit)} className="rule-b flex w-full flex-col items-start gap-0.5 py-1.5 text-left text-xs sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
+            <span className="ink-2 line-clamp-2 sm:truncate" title={e.title}>{e.title.replace(/^\[511 live\] /, "").split(" — ")[0]}</span>
             <span className="label mono shrink-0">{(e.detail.near_units as string[] | undefined)?.slice(0, 2).join(", ") ?? e.unit ?? ""} · {hhmm(e.sim_ts)}</span>
           </button>
         ))}
