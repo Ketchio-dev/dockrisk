@@ -51,3 +51,6 @@ docs/demo/submission.mp4
 docs/demo/submission-captioned.mp4
 .vercel
 .env*
+
+# a sibling agent's analysis workspace; its results and notebook are worth keeping, its venv is 197 MB
+analysis/**/.venv/

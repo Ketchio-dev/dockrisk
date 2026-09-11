@@ -119,7 +119,9 @@ def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     wanted = {s.strip().zfill(2) for s in a.only.split(",")} if a.only else None
     if not wanted:
-        for f in OUT.glob("ko-*.wav"):
+        # numbered beats only: a reference recording parked here as ko-ref.wav would
+        # otherwise be deleted by its own synthesiser on the next full run
+        for f in OUT.glob("ko-[0-9][0-9]-*.wav"):
             f.unlink()
 
     total = 0.0
