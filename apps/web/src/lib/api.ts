@@ -48,7 +48,13 @@ export type Facility = {
   facility_id: number; name: string; customer: string | null; city: string; lat: number; lon: number; source: string; confidence: number;
   property_polygon_geojson: { coordinates: number[][][] } | null; dock_polygon_geojson: { coordinates: number[][][] } | null;
 };
-export type Candidate = { driver_name: string; unit: string; eligible: boolean; deadhead_km: number; eta: string; hos_margin_h: number; road_extra_h: number; road_events: string[]; reasons: string[]; blockers: string[] };
+export type DockStat = { grain: string; n: number; median_min: number; p90_min: number };
+export type DockScenario = { load_min: number; unload_min: number; margin_h: number; feasible: boolean; first_violation: string | null; at_step: string | null };
+/** What the plan's flat 45-minute dock allowance hides: the same trip costed with the dock times
+ *  this lane has actually taken. Advisory — the eligibility verdict stays on the allowance. */
+export type Dock = { pickup: DockStat | null; delivery: DockStat | null; allowance_min: number; wording: string;
+                     scenarios: { typical: DockScenario; busy: DockScenario } };
+export type Candidate = { driver_name: string; unit: string; eligible: boolean; deadhead_km: number; eta: string; hos_margin_h: number; road_extra_h: number; road_events: string[]; reasons: string[]; blockers: string[]; dock: Dock | null };
 export type Exposure = {
   n?: number; window_days: number; window: string[]; monthly_exposure_low: number; monthly_exposure_high: number; total_billable_hours: number;
   by_kind: Record<string, { n: number; median_min: number; p90_min: number; over_free_n: number; over_free_pct: number; within_10min_of_threshold_n: number; billable_hours: number }>;

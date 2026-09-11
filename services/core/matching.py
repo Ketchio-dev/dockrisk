@@ -24,10 +24,15 @@ def haversine_km(lat1, lon1, lat2, lon2) -> float:
 
 
 def rank_candidates(now: datetime, load: dict, candidates: list[dict], duty_logs: dict[str, list[DutyEvent]],
-                    exclude: set[str] = frozenset(), closures: list[Closure] = ()) -> list[dict]:
+                    exclude: set[str] = frozenset(), closures: list[Closure] = (),
+                    service_est=None) -> list[dict]:
     """load: {bill_number, orig_lat, orig_lon, dest_lat, dest_lon, pickup_by_end, load_type, weight_lbs, distance_km}
     candidates: [{driver_name, unit, lat, lon, status, cycle, trailer_type, trailer_capacity_lbs, busy_until}]
-    closures: open road events; each candidate's deadhead and the shared line haul pay for the ones they cross."""
+    closures: open road events; each candidate's deadhead and the shared line haul pay for the ones they cross.
+    service_est: optional (city, stop_kind) -> {median_min, p90_min, n, grain}. The verdict below is always
+    the fixed SERVICE_H allowance — a rule, reproducible, the thing a dispatcher is accountable to. What the
+    estimate adds is a second and third reading of the same plan with the dock times this lane has actually
+    taken, so a candidate that clears the rule by twenty minutes but not a busy dock says so out loud."""
     out = []
     # line-haul estimate: great-circle x 1.25 road factor. The export's DISTANCE is trip-level and often multi-stop.
     gc = haversine_km(load.get("orig_lat"), load.get("orig_lon"), load.get("dest_lat"), load.get("dest_lon"))
@@ -67,9 +72,28 @@ def rank_candidates(now: datetime, load: dict, candidates: list[dict], duty_logs
             hard_fail.append(f"cannot reach pickup by {pb.strftime('%H:%M')} (ETA {eta.strftime('%H:%M')})")
         else:
             reasons.append(f"deadhead {dead_km:.0f} km, ETA {eta.strftime('%H:%M')}" + (f" before {pb.strftime('%H:%M')}" if pb else ""))
-        plan = [PlanStep("driving", dead_h, "deadhead"), PlanStep("on_duty", SERVICE_H, "load"),
-                PlanStep("driving", loaded_h, "line haul"), PlanStep("on_duty", SERVICE_H, "unload")]
+        def plan_with(load_h: float, unload_h: float) -> list[PlanStep]:
+            return [PlanStep("driving", dead_h, "deadhead"), PlanStep("on_duty", load_h, "load"),
+                    PlanStep("driving", loaded_h, "line haul"), PlanStep("on_duty", unload_h, "unload")]
+
+        plan = plan_with(SERVICE_H, SERVICE_H)
         log = duty_logs.get(c["driver_name"])
+        dock = None
+        if log and service_est:
+            pu = service_est(load.get("orig_city"), "pickup")
+            dl = service_est(load.get("dest_city"), "delivery")
+            if pu or dl:
+                dock = {"pickup": pu, "delivery": dl, "allowance_min": round(SERVICE_H * 60), "scenarios": {}}
+                for label, field in (("typical", "median_min"), ("busy", "p90_min")):
+                    lh = (pu[field] / 60) if pu else SERVICE_H
+                    uh = (dl[field] / 60) if dl else SERVICE_H
+                    fx = check_plan(log, now, plan_with(lh, uh), c.get("cycle") or 1)
+                    dock["scenarios"][label] = {"load_min": round(lh * 60), "unload_min": round(uh * 60),
+                                                "margin_h": round(fx.margin_h, 2), "feasible": fx.feasible,
+                                                "first_violation": fx.first_violation, "at_step": fx.at_step}
+                # Two p90 docks in a row is not a p90 trip, and must never be sold as "90% safe".
+                dock["wording"] = ("Same plan, dock time from history instead of the fixed allowance. "
+                                   "'busy' puts both docks at their 90th percentile — a stress test, not a probability.")
         if log:
             f = check_plan(log, now, plan, c.get("cycle") or 1)
             if not f.feasible:
@@ -82,7 +106,7 @@ def rank_candidates(now: datetime, load: dict, candidates: list[dict], duty_logs
             margin = -99
         out.append({"driver_name": c["driver_name"], "unit": c.get("unit"), "eligible": not hard_fail,
                     "deadhead_km": round(dead_km, 1), "eta": eta.isoformat(sep=" "), "hos_margin_h": margin,
-                    "road_extra_h": road_extra_h, "road_events": road_events,
+                    "road_extra_h": road_extra_h, "road_events": road_events, "dock": dock,
                     "reasons": reasons, "blockers": hard_fail,
                     "score": (0 if hard_fail else 1) * 1000 - dead_km + 10 * max(0, min(margin, 5))})
     out.sort(key=lambda x: -x["score"])

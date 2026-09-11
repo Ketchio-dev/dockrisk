@@ -83,6 +83,21 @@ export function RescuePanel({ bill, excludeDriver, onClose }: { bill: string; ex
                 <div>
                   <div className="font-medium">{c.driver_name} <span className="mono ink-3 font-normal">{c.unit}</span> <span className="num ml-2 text-xs ink-3">{c.deadhead_km} km · ETA {hhmm(c.eta)}{c.road_extra_h > 0 && <span className="t-warn"> (+{Math.round(c.road_extra_h * 60)} min road)</span>} · hours margin {fmtH(c.hos_margin_h)}</span></div>
                   <div className="text-xs ink-3">{c.reasons.filter((r) => !/^deadhead/.test(r)).map((r) => r.replace("trailer unknown ok", "trailer not on file")).join(" · ")}</div>
+                  {c.dock && (() => {
+                    // The flat allowance is the rule; this is what the docks on this lane have cost.
+                    // A candidate can clear the rule by hours and still be thin on a bad day.
+                    const t = c.dock.scenarios.typical, b = c.dock.scenarios.busy;
+                    const n = Math.min(c.dock.pickup?.n ?? Infinity, c.dock.delivery?.n ?? Infinity);
+                    const tight = b.margin_h < 1 || !b.feasible;
+                    return (
+                      <div className="text-xs ink-3" title={c.dock.wording}>
+                        docks at {c.dock.allowance_min} min each → <span className="num">{fmtH(c.hos_margin_h)}</span>
+                        {" · "}as usual here ({t.load_min}/{t.unload_min} min) → <span className="num">{fmtH(t.margin_h)}</span>
+                        {" · "}<span className={tight ? "t-warn" : ""}>busy ({b.load_min}/{b.unload_min} min) → <span className="num">{b.feasible ? fmtH(b.margin_h) : "no"}</span></span>
+                        {Number.isFinite(n) && <span className="ink-4"> · n={n}</span>}
+                      </div>
+                    );
+                  })()}
                   {c.blockers.length > 0 && <div className="text-xs t-bad">{c.blockers.join(" · ")}</div>}
                 </div>
                 {c.eligible && (done === c.driver_name ? <span className="text-xs t-ok">Offered — waiting for the driver</span> :

@@ -49,3 +49,41 @@ def test_a_closure_on_the_deadhead_can_turn_a_reachable_pickup_into_a_missed_win
     assert blocked["road_extra_h"] > 0.3 and blocked["road_events"] == ["401 EB collision"]
     assert not blocked["eligible"] and any("cannot reach pickup" in b for b in blocked["blockers"])
     assert any(r.startswith("road: +") for r in blocked["reasons"])
+
+
+def test_dock_history_rides_beside_the_verdict_without_changing_it():
+    """A rescue that clears the rule can still be tight once the docks are what they have been.
+
+    The plan budgets a flat 45 minutes to load and 45 to unload. In the carrier's own history a
+    Mississauga pickup runs 40 minutes at the median and nearly two hours at the ninetieth
+    percentile, so a candidate with hours to spare on paper may have very little on a bad day.
+    That belongs beside the verdict, not inside it: the eligibility decision stays reproducible
+    and rule-based, and the history is advice a dispatcher can weigh.
+    """
+    load = {"bill_number": "1", "orig_city": "MISSISSAUGA", "dest_city": "MILTON",
+            "orig_lat": 42.98, "orig_lon": -81.25, "dest_lat": 43.52, "dest_lon": -79.88,
+            "pickup_by_end": T0 + timedelta(hours=3), "load_type": "Dry Van", "weight_lbs": 30000}
+    cands = [{"driver_name": "near", "unit": "A", "lat": 43.13, "lon": -80.75, "cycle": 1,
+              "trailer_type": "Dry Van", "trailer_capacity_lbs": 44500}]
+    logs = {"near": fresh(9.0)}                      # nine hours in: enough slack to pass, not much
+
+    baseline = rank_candidates(T0, load, cands, logs)[0]
+
+    def est(city, kind):
+        return {"grain": "city", "n": 200, "median_min": 40.0, "p90_min": 150.0, "note": "test"}
+
+    withdock = rank_candidates(T0, load, cands, logs, service_est=est)[0]
+
+    # the verdict is untouched by the estimate
+    assert withdock["eligible"] == baseline["eligible"]
+    assert withdock["hos_margin_h"] == baseline["hos_margin_h"]
+
+    d = withdock["dock"]
+    assert d["allowance_min"] == 45 and d["pickup"]["n"] == 200
+    # 150-minute docks at both ends eat into the buffer the flat allowance left
+    assert d["scenarios"]["busy"]["margin_h"] < d["scenarios"]["typical"]["margin_h"]
+    assert d["scenarios"]["busy"]["load_min"] == 150 and d["scenarios"]["typical"]["load_min"] == 40
+    assert "not a probability" in d["wording"]          # never sold as "90% safe"
+
+    # and with no history at all the field is simply absent
+    assert rank_candidates(T0, load, cands, logs, service_est=lambda c, k: None)[0]["dock"] is None

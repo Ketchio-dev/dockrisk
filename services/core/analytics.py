@@ -129,6 +129,33 @@ def build_dwell_model(conn, free_min: int = FREE_MIN_DEFAULT) -> int:
     return n_written
 
 
+def service_estimate(conn, city: str | None, stop_kind: str, min_n: int = MIN_N_FOR_GRAIN) -> dict | None:
+    """How long a *fresh* stop here has historically taken, unconditionally.
+
+    dwell_model answers a different question — given a truck has already waited this long, how much
+    longer — which is right for the truck standing at a dock and wrong for the one you are about to
+    send. Planning a rescue needs the whole distribution from arrival, so this reads dwell_history
+    directly. Coarsens city -> stop kind -> everything, and always reports the grain and n it used.
+
+    Returned minutes are an estimate and must be labelled as one: the rescue verdict stays on the
+    fixed service allowance, and this rides alongside it.
+    """
+    cur = conn.cursor()
+    for grain, where, args in (("city", "UPPER(city)=? AND stop_kind=?", ((city or "").upper(), stop_kind)),
+                               ("kind", "stop_kind=?", (stop_kind,)),
+                               ("all", "1=1", ())):
+        if grain == "city" and not city:
+            continue
+        ds = sorted(r[0] for r in cur.execute(
+            f"SELECT dwell_min FROM dwell_history WHERE dwell_min <= {CAP_MIN} AND {where}", args))
+        if len(ds) >= min_n:
+            return {"grain": grain, "n": len(ds),
+                    "median_min": round(statistics.median(ds), 1),
+                    "p90_min": round(ds[int(0.9 * (len(ds) - 1))], 1),
+                    "note": "empirical dock time from arrival to completion; an estimate, not a rule"}
+    return None
+
+
 def predict_remaining(conn, customer: str | None, city: str | None, stop_kind: str, elapsed_min: float,
                       free_min: int = FREE_MIN_DEFAULT, arrival_hour: int | None = None) -> dict:
     """Conditional prediction at the nearest elapsed point at or below elapsed_min, coarsening the grain

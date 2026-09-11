@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
-from core.analytics import build_dwell_history, build_dwell_model, exposure_summary, predict_remaining
+from core.analytics import build_dwell_history, build_dwell_model, exposure_summary, predict_remaining, service_estimate
 from core.backtest import replay
 from core.notice import draft_notice
 from core.db import DB_PATH, connect, init_schema
@@ -928,7 +928,8 @@ def rescue(bill_number: str, exclude_driver: str | None = None):
     l = row("SELECT pickup_by_end, trailer1 FROM legs WHERE bill_number=? ORDER BY seq LIMIT 1", bill_number) or {}
     a = row("SELECT json_extract(reason_json,'$.pickup_by_end') pbe FROM assignments WHERE bill_number=? ORDER BY assignment_id DESC LIMIT 1", bill_number) or {}
     pbe = a.get("pbe") or l.get("pickup_by_end")
-    load = {"bill_number": bill_number, "orig_lat": o["orig_lat"], "orig_lon": o["orig_lon"], "dest_lat": o["dest_lat"], "dest_lon": o["dest_lon"],
+    load = {"bill_number": bill_number, "orig_city": o["orig_city"], "dest_city": o["dest_city"],
+            "orig_lat": o["orig_lat"], "orig_lon": o["orig_lon"], "dest_lat": o["dest_lat"], "dest_lon": o["dest_lon"],
             "pickup_by_end": datetime.fromisoformat(pbe) if pbe else None,
             "load_type": o["load_type"], "weight_lbs": o["weight_lbs"], "distance_km": (o["distance"] or 0) * 1.609 if o["distance"] else None}
     cands = []
@@ -946,7 +947,10 @@ def rescue(bill_number: str, exclude_driver: str | None = None):
         cands.append({"driver_name": t["driver_name"], "unit": t["unit"], "lat": t["lat"], "lon": t["lon"], "status": d.get("status"), "cycle": norm_cycle(d.get("cycle")),
                       "trailer_type": tr.get("trailer_type"), "trailer_capacity_lbs": tr.get("capacity_lbs"), "busy_until": busy_until})
     logs = {c["driver_name"]: duty_log(c["driver_name"]) for c in cands}
-    ranked = rank_candidates(now, load, cands, logs, exclude={exclude_driver} if exclude_driver else set(), closures=active_closures())
+    # The verdict stays on the fixed service allowance; the history rides alongside it.
+    ranked = rank_candidates(now, load, cands, logs, exclude={exclude_driver} if exclude_driver else set(),
+                             closures=active_closures(),
+                             service_est=lambda city, kind: service_estimate(S.conn, city, kind))
     return {"bill_number": bill_number, "load": {k: (v.isoformat(sep=" ") if isinstance(v, datetime) else v) for k, v in load.items()},
             "candidates": ranked, "note": "eligibility filters + ranking with reasons; no legal candidate means exactly that"}
 
