@@ -81,7 +81,7 @@ p  { font-size:26px; line-height:1.62; color:var(--ink-2); max-width:46ch; }
 <section class="slide">
   <div class="eyebrow">문제 · 하나</div>
   <h2>트럭 한 대가 서 있는 동안, 시계는 두 개 돈다</h2>
-  <svg viewBox="0 0 1230 300" style="width:100%;height:300px;margin-top:8px">
+  <svg viewBox="0 0 1230 300" style="width:100%;height:300px;flex:none;margin-top:8px">
     <!-- money clock -->
     <text x="0" y="24" font-family="IBM Plex Sans KR" font-size="21" font-weight="600" fill="#1a1a17">돈 시계 — 적체 요금</text>
     <rect x="0" y="42" width="1230" height="46" fill="#f8f7f4" stroke="#e3e1da"/>
@@ -91,7 +91,7 @@ p  { font-size:26px; line-height:1.62; color:var(--ink-2); max-width:46ch; }
     <text x="532" y="112" font-family="IBM Plex Sans KR" font-size="19" fill="#b54708">여기서부터 청구 가능</text>
 
     <!-- law clock -->
-    <text x="0" y="184" font-family="IBM Plex Sans KR" font-size="21" font-weight="600" fill="#1a1a17">법 시계 — 남은 운행 가능 시간</text>
+    <text x="0" y="184" font-family="IBM Plex Sans KR" font-size="21" font-weight="600" fill="#1a1a17">법 시계 — 근무 14시간 · 경과 16시간</text>
     <rect x="0" y="202" width="1230" height="46" fill="#f8f7f4" stroke="#e3e1da"/>
     <rect x="0" y="202" width="340" height="46" fill="#8f8e86"/>
     <rect x="340" y="202" width="2" height="46" fill="#1a1a17"/>
@@ -105,7 +105,15 @@ p  { font-size:26px; line-height:1.62; color:var(--ink-2); max-width:46ch; }
       </pattern>
     </defs>
   </svg>
-  <p>업계 시스템은 대체로 위쪽 하나만 본다.</p>
+  <!-- The first draft said "industry systems only watch the top one". Nothing in our research
+       supports that — Optimal Dynamics assigns loads against HOS, and TruckMate already bills
+       detention. The defensible gap is that the two clocks live in different systems, which is
+       also what the English deck says. Sources are printed on the card: the complaint that
+       started this rewrite was "where does any of this come from". -->
+  <p style="max-width:64ch">둘 다 이미 계산은 된다. 다만 <b style="font-weight:600">서로 다른 시스템에</b> 산다 — 대기료는 배차 시스템(TMS), 근무시간은 운행기록계(ELD). 게다가 TMS의 대기료는 누군가 도착·출차 시각을 <b style="font-weight:600">입력한 뒤에야</b> 계산된다. 그 입력을 아무도 하지 않는다.</p>
+  <p class="dim" style="font-size:18px;line-height:1.5;max-width:78ch">
+     무료 2시간 = 주최측 브리프의 채점 항목("free 2-hour FTL allowance") ·
+     14/16시간 = 캐나다 상용차 운행시간 규정 SOR-2005-313</p>
 </section>
 
 <!-- 03 ─────────────────────────────────────────────── 진짜 문제 -->

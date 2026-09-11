@@ -122,3 +122,34 @@ def test_centroid_facility_is_flagged_low_confidence(db):
         eng.on_geofence(e, {})
     reasons = json.loads(dict(db.execute("SELECT * FROM detention_charges").fetchone())["reason_codes"])
     assert any("not verified dock geometry" in r for r in reasons)
+
+
+def test_a_stop_past_the_six_hour_line_is_held_for_review(db):
+    """The money is still computed; it is the approval that is blocked.
+
+    In the carrier's own 56 days, 49 stops ran longer than six hours — 1.1% of them — and they
+    carried 65% of every hour past free time. An overnight hold, a dropped trailer and a status
+    typed in the next morning are indistinguishable in this export, so a seven-hour charge is
+    only as good as its gate-exit evidence and its contract. It never auto-bills.
+    """
+    eng = VisitEngine(db); idx = GeofenceIndex(db.execute("SELECT * FROM facilities").fetchall()); tr = GeofenceTracker(idx, confirm=3)
+    t = datetime(2026, 9, 8, 9, 27)
+    outside = (C_LAT + 0.01, C_LON); inside = (C_LAT + 0.002, C_LON); dock = (C_LAT, C_LON)
+    ctx = {"bill_number": "409009", "stop_kind": "delivery", "customer": "ACME", "appointment_start_ts": "2026-09-08 10:00:00"}
+    evs = drive(tr, "B4000", t, [outside, inside, inside, inside])          # confirmed enter 09:30
+    v = eng.on_geofence(evs[0], ctx)
+    eng.on_driver_event(v["visit_id"], "arrival_class", t + timedelta(minutes=5), "Driver7", {"value": "on_time"})
+    eng.on_driver_event(v["visit_id"], "checked_in", datetime(2026, 9, 8, 9, 40), "Driver7")
+    for e in drive(tr, "B4000", datetime(2026, 9, 8, 10, 30), [dock, dock, dock]):
+        eng.on_geofence(e, ctx)
+    eng.on_driver_event(v["visit_id"], "service_complete", datetime(2026, 9, 8, 17, 0), "Driver7")
+    eng.on_driver_event(v["visit_id"], "released", datetime(2026, 9, 8, 17, 5), "Driver7")
+    for e in drive(tr, "B4000", datetime(2026, 9, 8, 17, 7), [dock, outside, outside, outside]):
+        eng.on_geofence(e, ctx)
+
+    ch = dict(db.execute("SELECT * FROM detention_charges WHERE bill_number='409009'").fetchone())
+    assert ch["physical_dwell_min"] > 6 * 60                    # 09:30 -> 17:10
+    assert ch["billable_min"] == 300 and ch["amount"] == 375.0  # 10:00 -> 17:05 = 425 min, less 120 free, floored
+    assert ch["review_required"] == 1
+    assert any("review line" in r for r in json.loads(ch["reason_codes"])), json.loads(ch["reason_codes"])
+    assert eng.get(v["visit_id"])["state"] == "REVIEW_REQUIRED"

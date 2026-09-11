@@ -29,6 +29,12 @@ TS_COL = {"FACILITY_APPROACH": "approach_ts", "PROPERTY_ENTERED": "property_ente
           "GATE_EXITED": "gate_exited_ts"}
 MERGE_GAP_MIN = 20          # re-entry within this many minutes of a gate exit is the same visit
 THRESHOLD_BAND_MIN = 10     # +/- around free time -> review, never auto-bill
+# Past this a stop stops looking like dock time. In the carrier's own 56 days, 49 stops ran
+# longer than six hours — 1.1% of them — and they carried 65% of all the hours past free time.
+# An overnight hold, a dropped trailer and a status entered the next morning are not separable
+# in this export, so the money is real only if the evidence is. These never auto-bill.
+LONG_DWELL_MIN = 6 * 60
+ARTIFACT_DWELL_MIN = 48 * 60
 
 
 def _iso(t: datetime | None) -> str | None:
@@ -231,8 +237,12 @@ class VisitEngine:
             reasons.append("no gate-exit evidence; clock ended at release")
         if (fac.get("confidence") or 0) < 0.6:
             reasons.append(f"facility geometry is {fac.get('source')} (confidence {fac.get('confidence')}), not verified dock geometry")
-        if physical > 48 * 60:
+        if physical > ARTIFACT_DWELL_MIN:
             reasons.append("dwell exceeds 48 h; likely not dock time")
+        elif physical > LONG_DWELL_MIN and at_risk:
+            reasons.append(f"dwell of {physical / 60:.1f} h is past the {LONG_DWELL_MIN // 60} h review line; "
+                           "an overnight hold, a dropped trailer and a late status entry look the same here — "
+                           "confirm gate-exit evidence and the contract before billing")
         if closed and at_risk:
             have = {"geofence_entry": bool(entered), "geofence_exit": bool(exited), "driver_checkin": bool(checked), "appointment": bool(appt),
                     "driver_release": bool(released), "on_time": visit["on_time"] is not None}
