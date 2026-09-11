@@ -2,12 +2,18 @@
 # whole repo is uploaded unless it is listed here, and the repo carries 774 MB of recording
 # scratch (one .wav over the 100 MB per-file limit), a Python venv, and two node_modules.
 # Deploying from the root without this file fails on the file size limit.
+#
+# LEADING SLASHES MATTER. This file takes .gitignore syntax, so an unanchored `data` matches
+# at every depth — including apps/web/src/app/data, the /data route. It did, and /data served
+# a 404 in production while every other page was fine. Anything meant to name a top-level
+# directory is anchored; only the build artefacts below are deliberately matched at any depth.
 
-.git
-.demo-logs
-artifacts
+/.git
+/.demo-logs
+/artifacts
+/analysis
 
-# installed and generated
+# installed and generated, wherever they appear
 node_modules
 .next
 .venv
@@ -15,14 +21,14 @@ __pycache__
 *.pyc
 
 # the API, the simulator and their data live on the VPS, not here
-services
-data
-deploy
+/services
+/data
+/deploy
 
 # recordings, deck assets and research — none of it is served by the web app
-docs
-scripts
+/docs
+/scripts
 
 # satellite tiles are cached at request time; a read-only serverless disk cannot use a
 # prebuilt cache, and it is 11 MB of upload
-apps/web/.tile-cache
+/apps/web/.tile-cache

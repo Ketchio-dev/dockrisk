@@ -114,7 +114,12 @@ python3 -c "import sys; sys.exit(0 if 180 <= $SUB <= 300 else 1)" 2>/dev/null \
 
 if [[ $DO_DEPLOY == 1 ]]; then
   head_ "deployed"
-  if [[ "$(curl -s -o /dev/null -w '%{http_code}' -m 20 $DEPLOY_WEB)" == "200" ]]; then ok "web" "$DEPLOY_WEB"; else bad "web" "$DEPLOY_WEB"; fi
+  # Every route, not just the root. A stray unanchored line in .vercelignore deleted the /data
+  # route from the upload and the home page never noticed; only the missing page 404'd.
+  for p in / /data /policies /driver; do
+    code=$(curl -s -o /dev/null -w '%{http_code}' -m 20 "$DEPLOY_WEB$p")
+    [[ "$code" == "200" ]] && ok "web $p" || bad "web $p" "$code"
+  done
   if [[ "$(curl -s -o /dev/null -w '%{http_code}' -m 20 $DEPLOY_API/health)" == "200" ]]; then ok "API" "$DEPLOY_API"; else bad "API" "$DEPLOY_API"; fi
   # The failure that actually happened: the scenario ran out and the clock sat still for a day.
   C1=$(j $DEPLOY_API/sim/clock 20 | jq -r '.sim_ts // "?"')
