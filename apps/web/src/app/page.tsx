@@ -15,13 +15,18 @@ function useSnapshot() {
   const [mode, setMode] = useState<"connecting" | "live" | "polling" | "offline">("connecting");
   useEffect(() => {
     let es: EventSource | null = null; let poll: ReturnType<typeof setInterval> | null = null; let retry: ReturnType<typeof setTimeout> | null = null; let dead = false;
+    // Navigating away mid-flight killed these fetches at the network layer, and the browser
+    // logged each one as a CORS failure — the board re-rendered fine, but the console went red
+    // on every nav click. Abort them on unmount and say nothing about the abort.
+    const ac = new AbortController();
+    const offline = (e: unknown) => { if ((e as Error)?.name !== "AbortError") setMode("offline"); };
     let lastAt = 0;
     const got = (s: Snapshot) => { setSnap(s); lastAt = Date.now(); setStale(false); };
     // the stale flag is a clock reading, so it lives on a ticker rather than in render
     const tick = setInterval(() => setStale(lastAt > 0 && Date.now() - lastAt > 6000), 1000);
-    api<Snapshot>("/snapshot").then(got).catch(() => setMode("offline"));
+    api<Snapshot>("/snapshot", { signal: ac.signal }).then(got).catch(offline);
     // live over SSE; on a break, poll every 2 s and try the stream again every 10 s (an API restart drops the stream)
-    const fallback = () => { setMode("polling"); if (!poll) poll = setInterval(() => api<Snapshot>("/snapshot").then((s) => { got(s); setMode("polling"); }).catch(() => setMode("offline")), 2000); if (!retry) retry = setTimeout(() => { retry = null; if (!dead) connect(); }, 10000); };
+    const fallback = () => { setMode("polling"); if (!poll) poll = setInterval(() => api<Snapshot>("/snapshot", { signal: ac.signal }).then((s) => { got(s); setMode("polling"); }).catch(offline), 2000); if (!retry) retry = setTimeout(() => { retry = null; if (!dead) connect(); }, 10000); };
     const connect = () => {
       try {
         es = new EventSource(`${API}/stream`);
@@ -30,7 +35,7 @@ function useSnapshot() {
       } catch { fallback(); }
     };
     connect();
-    return () => { dead = true; es?.close(); clearInterval(tick); clearInterval(poll ?? undefined); clearTimeout(retry ?? undefined); };
+    return () => { dead = true; ac.abort(); es?.close(); clearInterval(tick); clearInterval(poll ?? undefined); clearTimeout(retry ?? undefined); };
   }, []);
   return { snap, stale, mode };
 }
