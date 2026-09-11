@@ -62,7 +62,17 @@ the clear-road margin is right there." That sentence is the brief's bonus paragr
 Click **Find a relief driver**. Candidates ranked with reasons: **Driver8 / B9001 — eligible, ~110 km
 deadhead, ETA before the 13:30 window, HOS buffer**, and on the same line **(+3 min road)** — each candidate
 pays for the closures on *its own* deadhead, so a farther truck behind the 410 shows +26 min and a blocker.
-Others blocked with the reason ("cannot reach pickup by 13:30", "busy until…"). Click **Offer load**. Switch
+Others blocked with the reason ("cannot reach pickup by 13:30", "busy until…").
+
+**Say the dock line out loud — it is the strongest thing on this screen.** Under each candidate:
+`docks at 45 min each → 1h 59m · as usual here (70/20 min) → 1h 59m · busy (156/64 min) → −0h 11m · n=86`.
+The plan budgets a flat 45 minutes a dock. This lane's own history says a pickup there runs 70 minutes
+typically and 156 at the ninetieth percentile — and costed that way that candidate is eleven minutes
+**past** a legal stop, not two hours clear of one. Four of seven flip. If asked: the eligibility verdict
+stays on the fixed allowance (a rule, reproducible, what a dispatcher is accountable to); the history is
+advice, carries its sample size, and two p90 docks in a row is a stress test, not "90% safe".
+
+Click **Offer load**. Switch
 to the Driver8 tab: the offer appears → **Accept**. Back on dispatch: *Relief accepted* on the row, the
 next-load exception resolves ("load reassigned"), the day bar gains a **relief accepted** mark, and on the
 map B9001 starts driving toward London.
