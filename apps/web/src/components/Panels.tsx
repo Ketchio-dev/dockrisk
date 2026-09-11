@@ -26,7 +26,9 @@ export function ChargesList({ charges }: { charges: Charge[] }) {
               <td className="display r pr-2 text-[14px]">${c.amount.toFixed(2)}</td>
               <td className="r" style={{ paddingTop: 5, paddingBottom: 5 }}>
                 {c.status === "draft" ? (
-                  <button disabled={busy === c.charge_id} onClick={() => approve(c.charge_id, "approved")} title={c.review_required ? "Approving acknowledges the review reasons listed" : "Approve draft"} className="btn btn-sm">Approve{c.review_required ? <span className="hidden sm:inline">, noted</span> : null}</button>
+                  <button disabled={busy === c.charge_id} onClick={() => approve(c.charge_id, "approved")} title={c.review_required ? "Approving acknowledges the review reasons listed" : "Approve draft"} className="btn btn-sm">{/* one flex item: .btn has gap:6px, so a bare text node beside the
+                    span would be spaced off from its own comma — "Approve , noted" */}
+                    <span>Approve{c.review_required ? <span className="hidden sm:inline">, noted</span> : null}</span></button>
                 ) : <span className="ink-3">{c.status}</span>}
               </td>
             </tr>
