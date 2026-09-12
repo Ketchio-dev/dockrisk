@@ -22,7 +22,7 @@ and writes language. The engine computes every number, and the dispatcher confir
 
 ## 0:00–1:00 — the finding (`/data`)
 
-"We opened the carrier's own 62-day TruckMate export and replayed every Southern Ontario stop through the
+"We opened the carrier's own 56-day TruckMate export and replayed every Southern Ontario stop through the
 rules. **257 detention charges, 768 billable hours, $57.6k at $75/h — about $31k a month** — and July was
 nearly three times August, so this is bursty, not steady." Scroll to *If DockRisk had been running*: "The
 30-minute warning, trained on the first four weeks and scored on the last four: **115 of the 126 stops that
