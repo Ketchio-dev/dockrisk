@@ -20,8 +20,8 @@ in/out times were never captured. The invisible loss is the next load: a driver 
 while a dock wait eats the 14-hour on-duty window, so the next pickup becomes infeasible *before* the two-hour
 free time even runs out. DockRisk watches both clocks on one time axis.
 
-Replaying the organizers' own 62-day TruckMate export through our rules: **$32k–43k a month of detention
-exposure**, in a thin tail right at the two-hour line (median wait under an hour, delivery p90 2.03 h) — which is
+Replaying the organizers' own 56-day TruckMate export through our rules: **$32k–43k a month of detention
+exposure**, in a thin tail right at the two-hour line (median wait under an hour, delivery p90 2.10 h) — which is
 exactly what manual logging misses. Scored out of sample (trained on the first four weeks, scored on the last
 four), the 30-minute warning flagged **115 of the 126 stops that went past free time** before billing started
 (recall 91 %, precision 79 %).
@@ -38,9 +38,14 @@ What is built and running:
 - **Road events in the same check.** Open 401 closures (live Ontario 511 events, or the scenario's corridor event)
   become extra hours on every drive leg the engine estimates. The verdict names the road when it is the
   difference, and the clear-road margin is shown beside it.
-- **Rescue.** When the next load is at risk, drivers are ranked with explicit eligibility filters and reasons
-  (position and ETA to the pickup window, trailer type and capacity, HOS for the whole plan, road minutes on their
-  own deadhead). One offer, the driver accepts on the companion app, the original stop keeps its detention evidence.
+- **Rescue, costed against the docks that lane actually has.** When the next load is at risk, drivers are ranked
+  with explicit eligibility filters and reasons (position and ETA to the pickup window, trailer type and capacity,
+  HOS for the whole plan, road minutes on their own deadhead). The plan budgets a flat 45 minutes a dock; each
+  candidate also shows the same plan costed at the median and 90th-percentile dock times this city and stop kind
+  have historically taken, with the sample size. On our demo lane that turns a candidate with 1 h 59 m of slack
+  into one 11 minutes past a legal stop, and flips four of seven. The eligibility verdict stays on the fixed
+  allowance — a rule a dispatcher is accountable to — and the history rides beside it as advice.
+  One offer, the driver accepts on the companion app, the original stop keeps its detention evidence.
 - **Driver companion** with the ELD-style 24-hour log grid, arrival class, check-in/door/done/released taps.
 - **Dispatcher board** ranked by urgency: every truck's day on a time axis with duty segments, the free-time band,
   the detention band, the legal-stop tick and the pickup window.
@@ -49,6 +54,11 @@ What is built and running:
 - **Two AI moments, both labelled, both with a rules fallback:** a rate confirmation is read into detention terms
   with the clause under each field; the customer detention notice is drafted from the evidence packet. The engine
   computes every number; the dispatcher confirms.
+- **Long stops never auto-bill.** 49 stops in the export ran past six hours — 1.1% of them — and they carry 65%
+  of every hour past free time. An overnight hold, a dropped trailer and a status typed the next morning are
+  indistinguishable in this file, so those charges are computed and then held for review with the gate-exit and
+  contract evidence named. Excluding them, the same calculation lands at $10.5k–14k a month rather than $32k–43k;
+  both are on the page, because a single number without its assumptions is not a finding.
 - **History replay** of the whole export, anonymized, on the `/data` page.
 
 ## Technologies used
@@ -69,7 +79,14 @@ organizer data is public; the numbers on screen differ from the ones above, whic
 
 ## Demo video URL
 
-(upload `docs/demo/backup.mp4` unlisted; paste link)
+(upload **`docs/demo/submission-captioned.mp4`** — 3 min 08 s, inside the 3–5 min rule, captions burned in —
+as an unlisted YouTube video, then paste the link here. `docs/demo/submission.mp4` is the same film with a clean
+picture and `submission.srt` alongside if a sidecar caption track is preferred. `docs/demo/backup.mp4` is the
+90-second fallback for a failed live demo, not this field.)
+
+## Pitch deck URL
+
+(upload `docs/demo/deck/dockrisk-deck.pdf` — 16 slides with presenter notes — to Drive and paste the link)
 
 ## Key learnings
 
