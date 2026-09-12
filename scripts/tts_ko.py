@@ -32,17 +32,17 @@ import subprocess
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-SCRIPT = ROOT / "docs" / "demo" / "explainer" / "narration-ko.md"
-OUT = ROOT / ".demo-logs" / "tts-ko"
+DEFAULT_SCRIPT = ROOT / "docs" / "demo" / "explainer" / "narration-ko.md"
+DEFAULT_OUT = ROOT / ".demo-logs" / "tts-ko"
 FISH_MODEL = "mlx-community/fish-audio-s2-pro"
 
 
-def beats() -> list[tuple[str, str, str]]:
+def beats(script: pathlib.Path) -> list[tuple[str, str, str]]:
     """(number, slug, spoken text) per beat, read straight out of the script so the two never drift."""
     out: list[tuple[str, str, str]] = []
     num = slug = None
     said: list[str] = []
-    for line in SCRIPT.read_text(encoding="utf-8").splitlines():
+    for line in script.read_text(encoding="utf-8").splitlines():
         h = re.match(r"^###\s+(\d{2})\s*·\s*(.+?)\s*$", line.strip())
         if h:
             if num and said:
@@ -103,8 +103,11 @@ def main() -> int:
     ap.add_argument("--ref-text", default="", help="exactly what the reference says (fish only)")
     ap.add_argument("--temperature", type=float, default=0.6, help="steadier than the 0.7 default; this is narration")
     ap.add_argument("--only", help="regenerate just these beats, e.g. 05 or 05,09")
+    ap.add_argument("--script", type=pathlib.Path, default=DEFAULT_SCRIPT, help="the markdown to read")
+    ap.add_argument("--out", type=pathlib.Path, default=DEFAULT_OUT, help="where the wavs go")
     a = ap.parse_args()
 
+    SCRIPT, OUT = a.script, a.out
     if not SCRIPT.exists():
         print(f"no script at {SCRIPT}", file=sys.stderr)
         return 1
@@ -125,7 +128,7 @@ def main() -> int:
             f.unlink()
 
     total = 0.0
-    bs = beats()
+    bs = beats(SCRIPT)
     for num, slug, text in bs:
         if wanted and num not in wanted:
             f = OUT / f"ko-{num}-beat.wav"
