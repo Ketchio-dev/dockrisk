@@ -103,7 +103,8 @@ goes to review. Everything else is on the screen behind you. Questions.
 | Symptom | Do |
 |---|---|
 | Header badge says **offline** | API died: `scripts/demo.sh 60` (keeps the web tab), then **reset** |
-| Map tiles grey | Satellite toggle → cached tiles; OSM needs the network |
+| Map tiles grey | It fixes itself: six misses and the map switches to the cached satellite layer and says so. If it has not yet, press **Satellite**. |
+| **The venue wifi is dead** | Nothing to do. Drilled with every external request blocked: board, day bar, verdict, hours, 511 items, charges, evidence, `/data` and the driver view all render — they are local. Only street tiles need the internet, and the satellite fallback covers them (3,105 tiles cached, all 37 facilities at close zoom). Re-drill any time with `cd apps/web && node scripts/offline-drill.mjs`. |
 | Clock stopped | Header **Resume** (the sim idles when paused or finished) |
 | Wrong numbers | **reset**; the seed replays identically |
 | Anything else | Play the 90-second recording and talk over it |

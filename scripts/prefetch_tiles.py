@@ -13,7 +13,27 @@ from concurrent.futures import ThreadPoolExecutor
 
 BASE = sys.argv[1] if len(sys.argv) > 1 else "http://localhost:3000"
 REGION = (42.95, -81.45, 44.45, -78.20)
-SPOTS = [(43.5290, -79.8560), (42.9980, -81.1880), (43.5183, -79.8774), (42.9849, -81.2453)]  # demo DCs + Milton/London centroids
+# Every facility the board can fly to, not just the two the script beats visit. Clicking any truck
+# row zooms the map to its facility, and an uncached one is a grey square in front of a judge —
+# which is exactly the moment the cache exists for. Falls back to the demo pair if the API is down.
+FALLBACK = [(43.5290, -79.8560), (42.9980, -81.1880), (43.5183, -79.8774), (42.9849, -81.2453)]
+
+
+def spots():
+    try:
+        import json
+        with urllib.request.urlopen("http://localhost:8000/facilities", timeout=10) as r:
+            fs = json.load(r)
+        pts = [(f["lat"], f["lon"]) for f in fs if f.get("lat") and f.get("lon")]
+        if pts:
+            print(f"{len(pts)} facilities from the API")
+            return pts
+    except Exception as e:
+        print(f"facilities unavailable ({e}); warming the demo pair only")
+    return FALLBACK
+
+
+SPOTS = spots()
 
 
 def tile(lat, lon, z):

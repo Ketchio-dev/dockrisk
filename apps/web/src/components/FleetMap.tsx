@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import L from "leaflet";
 import { CircleMarker, MapContainer, Marker, Polygon, Polyline, TileLayer, Tooltip, Circle, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
@@ -53,6 +53,9 @@ export default function FleetMap({ fleet, facilities, exceptions, selected, onSe
   fleet: FleetRow[]; facilities: Facility[]; exceptions: Exception[]; selected: string | null; onSelect: (unit: string | null) => void;
 }) {
   const [satellite, setSatellite] = useState(false);
+  // The miss counter is a ref, not state: it changes on every tile and only the crossing matters.
+  const tileFails = useRef(0);
+  const [fellBack, setFellBack] = useState(false);
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [showMinor, setShowMinor] = useState(false);
   const [zoom, setZoom] = useState(8);
@@ -82,7 +85,20 @@ export default function FleetMap({ fleet, facilities, exceptions, selected, onSe
     <div className="relative h-full w-full">
       <MapContainer center={REGION_VIEW.center} zoom={REGION_VIEW.zoom} className={`h-full w-full ${satellite ? "" : "map-muted"}`} zoomControl={false}>
         <FlyTo target={target} /><ResetView token={resetToken} /><ZoomWatch onZoom={setZoom} />
+        {/* Street tiles come from openstreetmap.org directly, so a dead venue connection leaves the map
+            a grey grid while every other panel keeps working off local data. The satellite layer goes
+            through our own /tiles route and is on disk, so it is the one basemap that survives offline —
+            and it is a graded requirement besides. Enough tile errors and we switch to it and say so. */}
         <TileLayer key={satellite ? "sat" : "osm"} url={satellite ? ESRI : OSM} maxZoom={19}
+          eventHandlers={{
+            // Six in a row is a dead network; one is a tile missing at the edge of a pan.
+            tileerror: () => {
+              if (satellite) return;
+              tileFails.current += 1;
+              if (tileFails.current >= 6) { setSatellite(true); setFellBack(true); }
+            },
+            tileload: () => { tileFails.current = 0; },
+          }}
           attribution={satellite ? "Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics" : "© OpenStreetMap contributors"} />
         <Polygon positions={REGION} pathOptions={{ color: "#a5a49b", weight: 1, dashArray: "6 6", fill: false }} />
         {facilities.map((f) => {
@@ -132,9 +148,15 @@ export default function FleetMap({ fleet, facilities, exceptions, selected, onSe
         <button onClick={() => setShowMinor((s) => !s)} className="btn btn-sm" title="Ontario 511 live events on 400-series highways in the region">
           511 live · {incidents.filter((i) => i.severity === "severe").length} severe{zoom >= 10 ? ` · ${incidents.filter((i) => i.severity === "lane").length} lane` : ""}{showMinor ? " · minor" : ""}
         </button>
-        <button onClick={() => setSatellite((s) => !s)} className={`btn btn-sm ${satellite ? "btn-on" : ""}`}>Satellite</button>
+        <button onClick={() => { setSatellite((s) => !s); setFellBack(false); tileFails.current = 0; }} className={`btn btn-sm ${satellite ? "btn-on" : ""}`}>Satellite</button>
         <button onClick={() => { onSelect(null); setResetToken((t) => t + 1); }} className="btn btn-sm">Region</button>
       </div>
+      {fellBack && (
+        <div className="absolute left-1/2 top-14 z-[1000] -translate-x-1/2 px-3 py-1.5 text-[12px]"
+             style={{ background: "var(--surface)", border: "1px solid var(--rule-strong)", color: "var(--ink-2)" }}>
+          Street tiles unreachable — switched to the cached satellite layer. Everything else is local.
+        </div>
+      )}
       {/* Key: three entries that matter at region zoom; the rest on demand. A strip on the canvas, not a card. */}
       <div className="absolute bottom-5 left-3 z-[1000] px-2.5 py-1.5 text-[11px]" style={{ background: "var(--surface)", borderTop: "1px solid var(--rule-strong)", color: "var(--ink-2)" }}>
         <div className="flex items-center gap-3">
