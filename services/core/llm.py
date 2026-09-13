@@ -6,13 +6,17 @@ model answers. That last resort stays. What sits in front of it is now a *chain*
 rather than one endpoint, so a sponsor's credits can be first in line without
 becoming a single point of failure on stage.
 
-Order comes from `DOCKRISK_LLM_CHAIN` (default `spur,proxy`). Each named rung reads
-its own base URL, key and model, and a rung with no key is skipped silently rather
-than spending a demo on an auth error:
+Order comes from `DOCKRISK_LLM_CHAIN` (default `proxy,openrouter`). Each named rung
+reads its own base URL, key and model, and a rung with no key is skipped silently
+rather than spending a demo on an auth error:
 
-    SPUR_BASE_URL       SPUR_API_KEY       SPUR_MODEL        # sponsored credits; spur-glm-5-2
     OPENAI_BASE_URL     OPENAI_API_KEY     DOCKRISK_EXTRACT_MODEL
     OPENROUTER_BASE_URL OPENROUTER_API_KEY OPENROUTER_MODEL  # last paid rung before the rules
+    SPUR_BASE_URL       SPUR_API_KEY       SPUR_MODEL        # sponsor credits, never activated
+
+The `spur` rung stays implemented but is out of the default order: the sponsored key
+answers 402 insufficient credit, so leaving it in front bought nothing but a failed
+round trip on every call. Put it back by setting DOCKRISK_LLM_CHAIN=spur,proxy,openrouter.
 
 Anthropic keeps its own path in the callers; this module is the OpenAI-compatible
 side, which is what both endpoints speak.
@@ -73,7 +77,7 @@ def _rung(name: str) -> Rung | None:
 
 def chain() -> list[Rung]:
     """The endpoints to try, in order, skipping any that are not configured."""
-    order = [n.strip().lower() for n in os.environ.get("DOCKRISK_LLM_CHAIN", "spur,proxy,openrouter").split(",") if n.strip()]
+    order = [n.strip().lower() for n in os.environ.get("DOCKRISK_LLM_CHAIN", "proxy,openrouter").split(",") if n.strip()]
     out: list[Rung] = []
     for name in order:
         r = _rung(name)
@@ -92,7 +96,7 @@ def call(fn):
     """
     rungs = chain()
     if not rungs:
-        raise RuntimeError("no LLM endpoint configured (set SPUR_API_KEY or OPENAI_API_KEY)")
+        raise RuntimeError("no LLM endpoint configured (set OPENAI_API_KEY or OPENROUTER_API_KEY)")
     notes: list[str] = []
     last: Exception | None = None
     for r in rungs:
