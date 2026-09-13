@@ -427,12 +427,23 @@ figcaption { font-size: var(--label-size); color: var(--ink-4); margin-top: 0.45
 .notes-panel { position: fixed; left: 0; right: 0; bottom: 0; z-index: 9997;
                background: var(--surface); border-top: 1px solid var(--rule-strong);
                padding: clamp(0.6rem, 1.6vh, 1.1rem) clamp(0.9rem, 3vw, 2.4rem);
-               max-height: 34vh; overflow-y: auto;
+               max-height: 52vh; overflow-y: auto;
                transform: translateY(101%); transition: transform 0.35s var(--ease); }
 .notes-panel.open { transform: translateY(0); }
 .notes-panel .label { margin-bottom: 0.3em; }
 .notes-panel .body { font-size: clamp(0.75rem, 1.05vw, 1.15rem); color: var(--ink-2); line-height: 1.5; max-width: 100ch; }
 .notes-panel .body li { margin-left: 1.1em; margin-bottom: 0.2em; }
+/* Two kinds of text, and he must never confuse them mid-sentence: .say is read out loud,
+   .dir is read only to himself. So they are set as different objects — the spoken lines get
+   the product's own display face at reading size behind a rule; the directions shrink away. */
+.notes-panel .body .dir { font-size: 0.88em; color: var(--ink-3); line-height: 1.5; margin: 0 0 0.5em; max-width: 92ch; }
+.notes-panel .body .dir + .dir { margin-top: -0.2em; }
+.notes-panel .body .saylabel { font-size: 0.7em; letter-spacing: 0.14em; text-transform: uppercase;
+                               color: var(--ink-4); margin: 0.7em 0 0.35em; }
+.notes-panel .body .say { font-size: 1.22em; line-height: 1.42; color: var(--ink-1); font-weight: 450;
+                          margin: 0 0 0.34em; padding-left: 0.75em; border-left: 2px solid var(--money);
+                          max-width: 78ch; }
+.notes-panel .body .say + .dir { margin-top: 0.9em; }
 
 /* ===========================================
    INLINE EDITING — opt-in. Hover the top-left corner, or press E.
@@ -525,10 +536,13 @@ body.editing .edit-bar { display: flex; }
         </div>
     </div>
     <div class="notes">
-        차가운 상태로 시작. 슬라이드 아래 막대를 손으로 짚으면서 연다. 40초 안에 끝낸다. 부제는 소리 내어 읽지 말 것.
- <em>말할 것:</em> "This is one truck's Sunday. The hatched part is the two hours of free time the contract gives the customer. The amber is money. And this red tick — the one that matters — is the moment the driver's next load became impossible. It happens <b>before</b> the amber starts."
- 그 다음: "Nobody in city dispatch is watching that red tick. That's the whole talk."
- <em>속도:</em> 40초. 여기서 늘어지면 뒤가 밀린다.
+        <p class="dir"><b>0:00–0:40.</b> 차갑게 시작. 사람을 보고 첫 두 문장을 말한 다음 화면으로 넘어간다. 부제는 읽지 않는다. <b>이 슬라이드의 두 문장은 외운다 — 유일하게 외우는 곳이다.</b></p>
+        <p class="saylabel">읽을 것 — 아래 영어를 그대로</p>
+        <p class="say">Hi. I'm Junsu.</p>
+        <p class="say">A truck waiting at a dock loses its next load before it earns a detention charge.</p>
+        <p class="say">DockRisk catches that moment. It tells the dispatcher which truck to move.</p>
+        <p class="say">That's the whole idea. Let me show you where it comes from.</p>
+        <p class="dir">여기서 늘어지면 뒤가 전부 밀린다. 40초.</p>
     </div>
 </section>
 
@@ -559,10 +573,13 @@ body.editing .edit-bar { display: flex; }
         </div>
     </div>
     <div class="notes">
-        비대칭을 꽂는 게 목적이다. 보이는 손실은 회계 문제, 안 보이는 손실은 운영 문제다. 아직 안 풀린 건 두 번째뿐.
- 마지막 줄은 <b>주최측 브리프의 보너스 질문을 그대로 인용한 것</b>이다. 그걸 소리 내어 말하면 신뢰가 생긴다.
- <em>말할 것:</em> "This is your question, not ours."
- <em>속도:</em> 60초. 오래 끌지 말 것 — 설득은 다음 숫자 슬라이드가 한다.
+        <p class="dir"><b>0:40–1:30.</b> 비대칭이 목적이다. 보이는 손실은 회계 문제, 안 보이는 손실은 운영 문제. 마지막 줄은 <b>주최측 브리프의 보너스 질문을 그대로 인용</b>한 것이다.</p>
+        <p class="saylabel">읽을 것 — 아래 영어를 그대로</p>
+        <p class="say">A dock delay costs a city desk twice.</p>
+        <p class="say">The first cost is detention. Somebody can see it, because there is a number on an invoice.</p>
+        <p class="say">The second cost is the load the driver can no longer legally take. Nobody sees that one. It never becomes a line item.</p>
+        <p class="say">Your own brief asks how a delay at one stop changes the rest of the day. That is your question, not ours. This is our answer.</p>
+        <p class="dir">설득은 다음 숫자 슬라이드가 한다. 여기서 오래 끌지 말 것.</p>
     </div>
 </section>
 
@@ -598,10 +615,13 @@ body.editing .edit-bar { display: flex; }
         </div>
     </div>
     <div class="notes">
-        Industry Impact 슬라이드다. <b>25%로 배점이 가장 크다.</b> 여기서 속도를 늦춘다. $31k를 손으로 가리킨다.
- <em>말할 것:</em> "That is one month, one mid-size carrier, from your file."
- 마지막 문단이 핵심이다. 현장 운송사 임원은 <b>unbilled 대신 exposure</b>라고 말하는지로 채점한다. 그 구분을 소리 내어 말하면 "데이터를 읽었다"는 신호가 된다.
- <em>"79% 정확도면 좋은 건가?" 질문이 오면:</em> "A false positive costs a dispatcher one glance. A false negative costs the charge and the load."
+        <p class="dir"><b>1:30–2:30. Use of Provided Data가 15%, Industry Impact가 25%. 가장 크게 버는 구간이다.</b> 속도를 늦춘다. $31k를 손으로 짚는다.</p>
+        <p class="saylabel">읽을 것 — 아래 영어를 그대로</p>
+        <p class="say">This is your file. Fifty-six days. Thirty-nine hundred orders. Every stop replayed through our rules.</p>
+        <p class="say">Thirty-two to forty-three thousand dollars a month of detention exposure.</p>
+        <p class="say">I want to be careful with that word. This is exposure. It is not money you can collect.</p>
+        <p class="say">The export has no billing records and no rates. So we do not call it unbilled revenue, and we do not put a recovery number on a slide.</p>
+        <p class="dir">운송사 임원은 <b>unbilled 대신 exposure</b>라고 말하는지로 채점한다. 그 구분을 소리 내면 "데이터를 읽었다"는 신호가 된다.<br><em>"79% 정확도면 충분한가?"</em> — "A false positive costs a dispatcher one glance. A false negative costs the charge and the load."</p>
     </div>
 </section>
 
@@ -633,11 +653,14 @@ body.editing .edit-bar { display: flex; }
         </div>
     </div>
     <div class="notes">
-        이 슬라이드의 목적은 <b>왜 아무도 이걸 이미 풀지 않았나</b>다. 평균만 보면 멀쩡해 보이기 때문이다.
- <em>말할 것:</em> "You cannot staff for a problem whose median is 'no problem.'"
- "거의 세 배"라고 비율만 말하지 말고 <b>두 숫자를 다 말한다</b> — $41.9k와 $15.0k.
- 오른쪽 차트는 슬라이드 그래픽이 아니라 <b>실제 제품 화면</b>이다. 한 번 언급하면 기술 점수가 조용히 올라간다.
- <em>속도:</em> 50초.
+        <p class="dir"><b>2:30–3:10.</b> 이 슬라이드의 목적은 <b>왜 아직 아무도 이걸 안 풀었나</b>다. 평균만 보면 멀쩡해 보이기 때문이다. 오른쪽 차트는 슬라이드 그래픽이 아니라 <b>실제 제품 화면</b>이다 — 한 번 말하면 기술 점수가 조용히 오른다.</p>
+        <p class="saylabel">읽을 것 — 아래 영어를 그대로</p>
+        <p class="say">Look at this chart. Most waits end inside an hour. The median stop is not a problem.</p>
+        <p class="say">The money is in the thin tail, on the right of the free-time line.</p>
+        <p class="say">And the tail is bursty. The worst month is forty-one thousand nine hundred. The quietest is fifteen thousand.</p>
+        <p class="say">You cannot staff for a problem whose median is no problem. That is why it is still open.</p>
+        <p class="say">That tail is also exactly what manual logging misses. Nobody writes down a two-hour wait while they are sitting in it.</p>
+        <p class="dir">비율만 말하지 말고 <b>두 숫자를 다 말한다</b> — $41.9k와 $15.0k.</p>
     </div>
 </section>
 
@@ -676,10 +699,16 @@ body.editing .edit-bar { display: flex; }
         </div>
     </div>
     <div class="notes">
-        발표 전체가 이 슬라이드 위에 서 있다. 하나만 기억시킨다면 <b>빨간 눈금이 황색보다 왼쪽에 있다</b>는 것.
- 막대가 다 그려질 때까지 기다렸다 말한다. 황색이 마지막에 나타나는데, 그 타이밍 자체가 논증이다.
- <em>손으로 훑으면서 말할 것:</em> "On duty… driving… he arrives… free time… and here" — (빨간 눈금을 짚으며) — "the next load is already gone. Thirty-seven minutes before anybody's detention timer even starts."
- Innovation이 20%다. 여기서 벌어들인다. <b>서두르지 마라.</b>
+        <p class="dir"><b>3:10–4:00. 발표 전체가 이 슬라이드 위에 서 있다.</b> 막대가 다 그려질 때까지 기다렸다 말한다. 황색이 마지막에 나타나는데 그 타이밍 자체가 논증이다. 손으로 왼쪽에서 오른쪽으로 훑는다.</p>
+        <p class="saylabel">읽을 것 — 아래 영어를 그대로</p>
+        <p class="say">This bar is one driver's day, on a time axis.</p>
+        <p class="say">Black is driving. Grey is on duty. The hatched part is the two free hours the contract gives the customer.</p>
+        <p class="say">After the hatch, amber. Amber is money.</p>
+        <p class="say">And this red tick is the moment he must stop driving by law.</p>
+        <p class="say">Now look at the order. The red tick comes first. Thirty-seven minutes before anybody's detention timer even starts.</p>
+        <p class="say">That is the problem. He loses the next load before the charge exists.</p>
+        <p class="say">Nobody in city dispatch is watching that red tick. That is the whole talk.</p>
+        <p class="dir"><b>Innovation 20%를 여기서 번다. 절대 서두르지 마라.</b> 하나만 기억시킨다면 <b>빨간 눈금이 황색보다 왼쪽에 있다</b>는 것.</p>
     </div>
 </section>
 
@@ -697,10 +726,14 @@ body.editing .edit-bar { display: flex; }
         </figure>
     </div>
     <div class="notes">
-        화면 전체를 설명하지 마라. <b>세 가지만 짚고 넘어간다</b> — 지도, 순위 보드, 아래 도로 줄.
- <em>말할 것:</em> "Eight trucks. Only one is a problem. It is at the top because it is the most urgent, not because it arrived first."
- 프로젝터에서 지도가 날아가 보이면 <b>바로 다음 슬라이드로 넘어가라.</b> 여기서 중요한 건 숫자지 픽셀이 아니다.
- <em>결정:</em> 라이브 앱으로 넘어가는 지점은 6번이나 9번이다. <b>미리 정해라. 무대에서 정하지 마라.</b>
+        <p class="dir"><b>4:00–4:40.</b> 화면 전체를 설명하지 마라. <b>세 가지만 짚는다</b> — 지도, 순위 보드, 아래 도로 줄.</p>
+        <p class="saylabel">읽을 것 — 아래 영어를 그대로</p>
+        <p class="say">This is the dispatcher's desk.</p>
+        <p class="say">Eight trucks, ranked by which one becomes a problem first.</p>
+        <p class="say">Only the top row is open. If everything is open, nothing is urgent.</p>
+        <p class="say">It is at the top because it is the most urgent, not because it arrived first.</p>
+        <p class="say">And this line at the bottom is live road data. A closure on the four-oh-one adds road time to the same check.</p>
+        <p class="dir">프로젝터에서 지도가 날아가 보이면 <b>바로 다음으로 넘어가라.</b> 중요한 건 숫자지 픽셀이 아니다.<br><b>라이브 앱으로 넘어가는 지점은 6번 아니면 9번. 미리 정해라. 무대에서 정하지 마라.</b></p>
     </div>
 </section>
 
@@ -728,12 +761,14 @@ body.editing .edit-bar { display: flex; }
         <p class="reveal" style="margin-top: var(--content-gap)">Three margins, not one verdict: <strong>at arrival</strong> tells the dispatcher this was always tight; <strong>if released now</strong> is the best case; <strong>after the predicted wait</strong> is the honest one. All three are shown because a dispatcher who is about to move a load wants to see the argument, not the answer.</p>
     </div>
     <div class="notes">
-        세 시계를 왼쪽에서 오른쪽으로 읽고 <b>멈춘다.</b> 빨간 블록이 알아서 일하게 둔다.
- 음수 여유가 펀치라인이다.
- <em>말할 것:</em> "Minus forty-nine minutes. Even if they release him this second, he cannot make the pickup legally."
- <b>n=9는 일부러 띄운 것</b>이고 가리킬 값어치가 있다. 표본이 얇으면 얇다고 보여준다.
- <em>"9개면 충분한가?" 질문이 오면:</em> "No — and that is exactly why the number is on the screen."
- Technical Execution이 20%다. 이 슬라이드와 증거 패킷 슬라이드가 그걸 짊어진다.
+        <p class="dir"><b>4:40–5:20.</b> 세 시계를 왼쪽에서 오른쪽으로 읽고 <b>멈춘다.</b> 빨간 블록이 알아서 일하게 둔다. 음수 여유가 펀치라인이다.</p>
+        <p class="saylabel">읽을 것 — 아래 영어를 그대로</p>
+        <p class="say">Here is one truck. Driver eighty-four, at a London dock, waiting since nine twenty-five.</p>
+        <p class="say">Three clocks. Driving hours. On-duty hours. And the detention clock.</p>
+        <p class="say">Minus forty-nine minutes. Even if they release him this second, he cannot make the next pickup legally.</p>
+        <p class="say">So the product does not say at risk. It says what to do. Reassign this load now — and the load number is right there.</p>
+        <p class="say">Underneath, it says why it thinks so, and how sure it is. Nine stops of history for this city. We print the nine.</p>
+        <p class="dir"><b>n=9는 일부러 띄운 것</b>이고 가리킬 값어치가 있다.<br><em>"9개면 충분한가?"</em> — "No — and that is exactly why the number is on the screen."</p>
     </div>
 </section>
 
@@ -758,10 +793,15 @@ body.editing .edit-bar { display: flex; }
         <p class="reveal ink-3" style="margin-top: var(--element-gap); font-size: var(--small-size)">Duty-status companion — a prototype, not a certified ELD. Labelled that way in the product too.</p>
     </div>
     <div class="notes">
-        기사 앱이 있는 이유는 <b>체크인 탭이 증거이기 때문</b>이지 UI 장식이 아니다.
- <em>말할 것:</em> "This tap is what makes the charge defensible — it is the difference between a claim and an argument."
- Best Mobile App이 특별상 다섯 개 중 하나다. 여기 30초는 싸게 먹힌다.
- <b>과장하지 마라.</b> 맨 아래 회색 줄을 소리 내어 읽어라. 운송사 사람 앞에서 ELD 인증을 주장하면 30초 만에 신뢰를 잃는다.
+        <p class="dir"><b>5:20–6:00. Best Mobile App이 특별상 다섯 개 중 하나다.</b> 여기 40초는 싸게 먹힌다. 맨 아래 회색 줄은 <b>반드시 소리 내어 읽는다.</b></p>
+        <p class="saylabel">읽을 것 — 아래 영어를 그대로</p>
+        <p class="say">This is what the driver sees on his phone.</p>
+        <p class="say">Hours at the top. His duty log underneath.</p>
+        <p class="say">He taps once to confirm he arrived.</p>
+        <p class="say">That tap is evidence. It sets when the billing clock starts, and it records who said so.</p>
+        <p class="say">It is the difference between a claim and an argument.</p>
+        <p class="say">And to be clear: this is a companion app. It is not a certified ELD. We do not claim that.</p>
+        <p class="dir"><b>과장하지 마라.</b> 운송사 사람 앞에서 ELD 인증을 주장하면 30초 만에 신뢰를 잃는다.</p>
     </div>
 </section>
 
@@ -779,11 +819,22 @@ body.editing .edit-bar { display: flex; }
         <p class="reveal label" style="margin-top:.4em">If the live app stalls: press play here. 90 seconds, same scenario, recorded. Do not apologise — just keep talking over it.</p>
     </div>
     <div class="notes">
-        <b>발표 전체에서 가장 큰 위험 구간이다.</b> "실패한 데모"가 Presentation 항목의 1/5점 앵커로 명시돼 있다.
- <b>오늘의 규칙: 라이브 앱이 15초 안에 원하는 걸 안 보여주면, 영상을 틀고 설명을 이어간다.</b>
- <b>무대에서 디버깅하지 마라.</b> 절대로.
- <em>준비:</em> 문 닫히기 전에 타일 캐시와 시뮬레이터를 데워둔다. 시나리오를 미리 11:00 근처에 맞춰둔다.
- <em>시간:</em> 6~7분. 가장 긴 구간이고, 앞의 모든 것이 이걸 위한 준비였다.
+        <p class="dir"><b>6:00–11:00. 발표 전체에서 가장 위험한 구간이다.</b> "실패한 데모"가 Presentation 항목의 1/5점 앵커로 브리프에 명시돼 있다.<br><b>오늘의 규칙: 라이브 앱이 15초 안에 원하는 걸 안 보여주면 영상을 틀고 설명을 이어간다. 무대에서 디버깅하지 마라. 절대로.</b><br><em>준비:</em> 문 닫히기 전에 타일 캐시와 시뮬레이터를 데워둔다. 시나리오를 11:00 근처에 맞춰둔다.<br><em>순서:</em> ① 구조 요청 → ② 도크 줄 → ③ 제안·수락 → ④ 청구 → ⑤ 패킷.</p>
+        <p class="saylabel">읽을 것 — 아래 영어를 그대로</p>
+        <p class="say">Let me do this live.</p>
+        <p class="say">The next load is in trouble, so we look for a relief driver.</p>
+        <p class="say">Candidates come back with reasons, not scores. Distance. Arrival time. Trailer type. Whether his hours cover the whole trip.</p>
+        <p class="say">Drivers who cannot make it are blocked, and it says why.</p>
+        <p class="say">Now read this line under each driver. This is the part I am most proud of.</p>
+        <p class="say">The plan gives every dock forty-five minutes. That is the industry default, and it is in every planning tool.</p>
+        <p class="say">But this lane's real docks take longer. We know that, because it is in your file.</p>
+        <p class="say">Costed that way, this driver is eleven minutes past a legal stop. Four of seven candidates flip.</p>
+        <p class="say">The decision still uses the fixed rule. The history sits beside it, with its sample size, so a dispatcher can disagree with us.</p>
+        <p class="say">One offer goes out. The driver accepts on his phone. The load is saved.</p>
+        <p class="say">And back at the original stop, he is released, and the charge writes itself.</p>
+        <p class="say">Fifteen billable minutes. Eighteen dollars and seventy-five cents.</p>
+        <p class="say">That is a small number. That is the point. Nobody chases eighteen dollars by hand. That is why it is never billed.</p>
+        <p class="dir">가장 긴 구간이고 앞의 모든 것이 이걸 위한 준비였다. <b>5분.</b><br>죽으면: <em>"Let me show you the recording and talk over it."</em> — 그리고 계속 말한다.</p>
     </div>
 </section>
 
@@ -815,10 +866,15 @@ body.editing .edit-bar { display: flex; }
         </div>
     </div>
     <div class="notes">
-        <b>화면의 금액이 $0.00인 것은 의도적이다.</b> 그냥 넘기지 마라 — 덱에서 가장 강한 슬라이드다.
- <em>말할 것:</em> "This stop did not earn a charge, and the packet says why. A tool that only shows you the wins is a tool nobody trusts on Monday."
- 빨간 검토 블록도 같은 생각이다. 도시 중심점으로 추정한 시설에 대해서는 <b>시스템이 청구를 거부하고 이유를 말한다.</b>
- 심사위원 중에 운송사 운영자가 있으면 이 슬라이드를 물어본다. <b>물어보게 둬라.</b>
+        <p class="dir"><b>11:00–11:40. 화면의 금액이 $0.00인 것은 의도적이다.</b> 그냥 넘기지 마라 — 덱에서 가장 강한 슬라이드다.</p>
+        <p class="saylabel">읽을 것 — 아래 영어를 그대로</p>
+        <p class="say">Here is what sits behind that amount.</p>
+        <p class="say">The calculation. The timeline. And who reported each event — the system, or the driver.</p>
+        <p class="say">This one is zero dollars. The stop did not earn a charge, and the packet says why.</p>
+        <p class="say">A tool that only shows you the wins is a tool nobody trusts on Monday.</p>
+        <p class="say">And this red block is the same idea. This facility was placed from a city centroid, so the system refuses to bill it and tells you that.</p>
+        <p class="say">We compute the amount automatically. We never bill automatically. A person presses the button.</p>
+        <p class="dir">심사위원 중에 운송사 운영자가 있으면 이 슬라이드를 물어본다. <b>물어보게 둬라.</b></p>
     </div>
 </section>
 
@@ -847,10 +903,14 @@ body.editing .edit-bar { display: flex; }
         </div>
     </div>
     <div class="notes">
-        Best Use of AI는 특별상인데, <b>정직한 프레이밍이 더 큰 모델보다 자주 이긴다.</b>
- <em>규칙을 평범하게 말할 것:</em> "The model reads and writes. It never counts."
- 심사위원은 오늘 하루 LLM이 자신만만하게 금액을 지어내는 데모를 여섯 번쯤 봤다.
- 전송 전 확인 목록을 가리켜라. <b>시스템이 자기 초안을 스스로 반박하고 있다</b> — 그 디테일이 10초 값어치를 한다.
+        <p class="dir"><b>11:40–12:10. Best Use of AI는 특별상인데, 정직한 프레이밍이 더 큰 모델보다 자주 이긴다.</b> 심사위원은 오늘 LLM이 자신만만하게 금액을 지어내는 데모를 여섯 번쯤 봤다.</p>
+        <p class="saylabel">읽을 것 — 아래 영어를 그대로</p>
+        <p class="say">There are exactly two places we use a model, and both are labelled in the product.</p>
+        <p class="say">One reads a rate confirmation and pulls out the terms. It shows the sentence it used, so you check the contract, not the model.</p>
+        <p class="say">The other drafts the customer notice, and then checks its own draft against the packet before anyone can send it.</p>
+        <p class="say">The rule is one line. The model reads and writes. It never counts.</p>
+        <p class="say">Rules do the law and the money. Both paths keep working with the model switched off.</p>
+        <p class="dir">전송 전 확인 목록을 가리켜라. <b>시스템이 자기 초안을 스스로 반박하고 있다</b> — 10초 값어치 한다.</p>
     </div>
 </section>
 
@@ -874,9 +934,13 @@ body.editing .edit-bar { display: flex; }
         </div>
     </div>
     <div class="notes">
-        조용한 슬라이드인데, <b>"우리 계약은 다 다르다"</b>는 뻔한 반론을 누가 말하기 전에 답한다.
- 225 대 32 분할은 <b>추출본에서 나온 실제 숫자</b>다. 논증보다 이게 더 잘 증명한다.
- <em>속도:</em> 40초. <b>시간이 밀리면 제일 먼저 잘라낼 슬라이드가 이것이다.</b>
+        <p class="dir"><b>12:10–12:35. 조용한 슬라이드인데 "우리 계약은 다 다르다"는 반론을 누가 말하기 전에 답한다.</b><br><b>시간이 밀리면 제일 먼저 잘라낼 슬라이드가 이것이다.</b></p>
+        <p class="saylabel">읽을 것 — 아래 영어를 그대로</p>
+        <p class="say">Detention terms are different for every customer. So we made them data, not code.</p>
+        <p class="say">Free time, rate, increment, when the clock starts.</p>
+        <p class="say">Two hundred and twenty-five of the stops in your export fall under one set of terms. Thirty-two fall under another.</p>
+        <p class="say">Change the terms, and every charge behind them recomputes. Nobody edits a rule file.</p>
+        <p class="dir">225 대 32 분할은 <b>추출본에서 나온 실제 숫자</b>다. 논증보다 이게 더 잘 증명한다.</p>
     </div>
 </section>
 
@@ -905,12 +969,14 @@ body.editing .edit-bar { display: flex; }
         <p class="reveal" style="margin-top: var(--content-gap)">No rates or revenue exist anywhere in the export, and 68% of legs carry a 1980 sentinel instead of a planned date. Financial impact is <strong>modelled from dwell and distance, and labelled as modelled</strong>, everywhere it appears.</p>
     </div>
     <div class="notes">
-        직관에 반하지만 <b>이 슬라이드가 점수를 번다.</b> 심사위원은 하루 종일 "다 됩니다"를 들었다.
- <b>안 되는 것 세 가지를 이름 붙여 말하는 게 가장 빠른 신뢰</b>다.
- 하나만 말한다면 철회 이야기를 해라.
- <em>말할 것:</em> "We found a bug in their data, we were wrong, and we wrote down that we were wrong."
- 그게 브리프가 채점 항목으로 적어둔 Problem Discovery다.
- <b>사과하는 투로 말하지 마라.</b> 공학적 규율로 전달해라. 실제로 그렇기 때문이다.
+        <p class="dir"><b>12:35–13:10. 직관에 반하지만 이 슬라이드가 점수를 번다.</b> 심사위원은 하루 종일 "다 됩니다"를 들었다. <b>안 되는 것 세 가지를 이름 붙여 말하는 게 가장 빠른 신뢰다.</b></p>
+        <p class="saylabel">읽을 것 — 아래 영어를 그대로</p>
+        <p class="say">Here is what we did not build, on purpose.</p>
+        <p class="say">Axle weight. Your truck sheet has one weight column. There is nothing to compute a load plan from, so we did not pretend.</p>
+        <p class="say">We do not report revenue. The export has no rates.</p>
+        <p class="say">And stops over six hours never bill themselves. Forty-nine of those stops carry two thirds of all the detention hours in the file.</p>
+        <p class="say">We also found a bug in our own reading of your data. We were wrong about it, we fixed it, and we wrote down that we were wrong. It is in the repo.</p>
+        <p class="dir">하나만 말한다면 <b>철회 이야기</b>를 해라. 그게 브리프가 채점 항목으로 적어둔 Problem Discovery다.<br><b>사과하는 투로 말하지 마라.</b> 공학적 규율로 전달해라 — 실제로 그렇기 때문이다.</p>
     </div>
 </section>
 
@@ -932,10 +998,12 @@ body.editing .edit-bar { display: flex; }
         <p class="reveal ink-3" style="margin-top: var(--content-gap); font-size: var(--small-size)">Canadian HOS recomputed from duty events under SOR/2005-313 — 13/14/16 h, 10 h off with an 8 h core, Cycle 1 and 2. Used <strong>forward</strong>, not just for compliance reporting.</p>
     </div>
     <div class="notes">
-        Use of Provided Data &amp; APIs가 15%인데 <b>이 슬라이드가 그 전부</b>다.
- <b>시간 아끼려고 건너뛰지 마라 — 대신 12번을 잘라라.</b>
- <b>"satellite toggle"을 명시적으로 말해라.</b> 브리프가 두 번 적어놨다. 누군가의 체크리스트에 있다는 뜻이다.
- 마지막 줄이 논증이다 — 보너스 질문은 우리에게 부록이 아니라 <b>제품이 존재하는 이유</b>였다.
+        <p class="dir"><b>13:10–13:40. Use of Provided Data &amp; APIs가 15%인데 이 슬라이드가 그 전부다.</b> <b>시간 아끼려고 건너뛰지 마라 — 대신 12번을 잘라라.</b></p>
+        <p class="saylabel">읽을 것 — 아래 영어를 그대로</p>
+        <p class="say">Everything the brief asked for is in here, and it is all running on your data.</p>
+        <p class="say">The four exports. The road API. The map, with the satellite toggle.</p>
+        <p class="say">And the bonus question — how one delay changes the rest of the day — was not an appendix for us. It is the reason the product exists.</p>
+        <p class="dir"><b>"satellite toggle"을 명시적으로 말해라.</b> 브리프가 두 번 적어놨다 — 누군가의 체크리스트에 있다는 뜻이다.</p>
     </div>
 </section>
 
@@ -968,9 +1036,13 @@ body.editing .edit-bar { display: flex; }
         </div>
     </div>
     <div class="notes">
-        <b>빠르게 지나간다 — 30초.</b> 기술 스택 나열은 그 자체로는 아무것도 못 번다. 오른쪽 두 상자가 번다.
- <em>이 두 문장은 꼭 말할 것:</em> "It survives an API restart." / "It is deterministic from a seed."
- <em>"왜 시뮬레이터를 따로 뒀나?" 질문이 오면:</em> "The brief requires it — and it is the only honest way to demo a historical export where every leg is already finished."
+        <p class="dir"><b>13:40–14:00. 빠르게 지나간다.</b> 기술 스택 나열은 그 자체로는 아무것도 못 번다. 오른쪽 두 상자가 번다.</p>
+        <p class="saylabel">읽을 것 — 아래 영어를 그대로</p>
+        <p class="say">Three services and one clock.</p>
+        <p class="say">It survives an API restart.</p>
+        <p class="say">It is deterministic from a seed — same seed, same replay, every time.</p>
+        <p class="say">And except for the live road call and street map tiles, all of this runs on a laptop with no network.</p>
+        <p class="dir"><em>"왜 시뮬레이터를 따로 뒀나?"</em> — "The brief requires it, and it is the only honest way to demo a historical export where every leg is already finished."</p>
     </div>
 </section>
 
@@ -1005,12 +1077,13 @@ body.editing .edit-bar { display: flex; }
         <p class="reveal title-meta" style="margin-top: var(--content-gap)"><span>Junsu Park · Braemar College</span><span>RoadStar Hackathon 2026 · Spur Innovation Center, Waterloo</span></p>
     </div>
     <div class="notes">
-        <b>문장으로 끝낸다. "질문 있나요?"로 끝내지 마라.</b> 말하고, 빨간 눈금을 짚고, 입을 다문다.
- <b>이 슬라이드를 Q&amp;A 내내 띄워둔다</b> — 심사위원이 적는 동안 URL이 화면에 남아 있게.
- <em>예상 질문과 답:</em>
- "Why not just use the TMS?" — "It computes after the fact, from timestamps nobody enters."
- "How do you know the dwell prediction generalises?" — "We do not, past n=9 per city. That is why n is on the screen."
- "What would you build next?" — "Verified dock geometry, then the appointment renegotiation the desk currently does by phone."
+        <p class="dir"><b>14:00–14:20. 문장으로 끝낸다. "질문 있나요?"로 끝내지 마라.</b> 말하고, 빨간 눈금을 짚고, 입을 다문다.<br><b>이 슬라이드를 Q&amp;A 내내 띄워둔다</b> — 심사위원이 적는 동안 URL이 화면에 남아 있게.</p>
+        <p class="saylabel">읽을 것 — 아래 영어를 그대로</p>
+        <p class="say">So that is DockRisk.</p>
+        <p class="say">One dock delay becomes three things. A charge with its evidence. A forward check on the next load. And a driver who can still take it.</p>
+        <p class="say">Watch the clock that runs out first.</p>
+        <p class="say">Thank you.</p>
+        <p class="dir"><em>예상 질문:</em><br>"Why not just use the TMS?" — "It computes after the fact, from timestamps nobody enters."<br>"Does the dwell prediction generalise?" — "We do not know, past nine stops a city. That is why n is on the screen."<br>"Is that money you can actually collect?" — "No. It is exposure. Contract eligibility and real rates are not in this file."<br>"What would you build next?" — "Backhaul. Thirty-five percent of legs run empty, but only twelve percent of the distance."</p>
     </div>
 </section>
 

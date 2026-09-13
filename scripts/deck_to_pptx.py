@@ -29,13 +29,14 @@ W, H = 1920, 1200          # 16:10, the deck's own ratio at 1440x900
 
 RENDERER = r"""
 import puppeteer from "puppeteer-core";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 const [url, outdir, w, h] = process.argv.slice(2);
 mkdirSync(outdir, { recursive: true });
 const b = await puppeteer.launch({
   executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
   headless: true, args: ["--no-sandbox", "--disable-gpu", "--hide-scrollbars", "--font-render-hinting=none"],
 });
+const rects = {};
 const p = await b.newPage();
 await p.setViewport({ width: Number(w), height: Number(h), deviceScaleFactor: 1 });
 await p.goto(url, { waitUntil: "networkidle2", timeout: 60000 });
@@ -63,7 +64,20 @@ for (let i = 0; i < n; i++) {
   }, i);
   await new Promise(r => setTimeout(r, 500));
   await p.screenshot({ path: `${outdir}/s${String(i).padStart(2, "0")}.png` });
+  // A slide with a <video> becomes a still here, so record where the video sat and let the
+  // PPTX put a real movie back in that rectangle — otherwise the live-demo slide is a poster.
+  const v = await p.evaluate((i) => {
+    const s = document.querySelectorAll(".slide")[i];
+    const el = s.querySelector("video");
+    if (!el) return null;
+    const r = el.getBoundingClientRect(), sr = s.getBoundingClientRect();
+    return { src: el.getAttribute("src"),
+             x: (r.left - sr.left) / sr.width, y: (r.top - sr.top) / sr.height,
+             w: r.width / sr.width, h: r.height / sr.height };
+  }, i);
+  if (v) rects[i] = v;
 }
+writeFileSync(`${outdir}/videos.json`, JSON.stringify(rects));
 console.log(n);
 await b.close();
 """
@@ -78,10 +92,17 @@ def notes_per_slide() -> list[str]:
             continue
         found = re.findall(r'class="notes[^"]*"[^>]*>(.*?)</(?:div|aside|section)>', chunk, re.S)
         text = " ".join(found)
+        # PowerPoint's notes pane is plain text, so the two kinds of line have to stay apart by
+        # shape instead of by style: the sentences he speaks get an arrow and their own line,
+        # the directions he only reads sit flush left.
+        text = re.sub(r'<p class="say"[^>]*>', "\n▶ ", text)
+        text = re.sub(r'<p class="saylabel"[^>]*>', "\n\n", text)
+        text = re.sub(r'<p class="dir"[^>]*>', "\n\n", text)
         text = re.sub(r"<li[^>]*>", "\n• ", text)
         text = re.sub(r"<br\s*/?>", "\n", text)
         text = html.unescape(re.sub(r"<[^>]+>", " ", text))
-        out.append(re.sub(r"[ \t]+", " ", text).strip())
+        text = re.sub(r"[ \t]+", " ", text)
+        out.append(re.sub(r"\n{3,}", "\n\n", "\n".join(l.strip() for l in text.split("\n"))).strip())
     return out
 
 
@@ -105,9 +126,25 @@ def main() -> int:
         prs = Presentation()
         prs.slide_width, prs.slide_height = Emu(12192000), Emu(7620000)   # 16:10 at PowerPoint scale
         blank = prs.slide_layouts[6]
+        vids = {}
+        vf = tmp / "videos.json"
+        if vf.exists():
+            vids = {int(k): v for k, v in json.loads(vf.read_text()).items()}
+
         for i, png in enumerate(pngs):
             s = prs.slides.add_slide(blank)
             s.shapes.add_picture(str(png), 0, 0, width=prs.slide_width, height=prs.slide_height)
+            v = vids.get(i)
+            if v:
+                mp4 = (DECK.parent / v["src"]).resolve()
+                if mp4.exists():
+                    s.shapes.add_movie(str(mp4),
+                                       int(v["x"] * prs.slide_width), int(v["y"] * prs.slide_height),
+                                       int(v["w"] * prs.slide_width), int(v["h"] * prs.slide_height),
+                                       poster_frame_image=None, mime_type="video/mp4")
+                    print(f"  slide {i+1}: embedded {mp4.name}")
+                else:
+                    print(f"  !! slide {i+1}: {mp4} not found", file=sys.stderr)
             note = notes[i] if i < len(notes) else ""
             if note:
                 s.notes_slide.notes_text_frame.text = note
