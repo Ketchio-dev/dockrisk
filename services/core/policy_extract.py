@@ -6,7 +6,7 @@ deterministic engine in core/visits.py does every calculation.
 
 Three paths, all labeled in `source` / `provider` / `model`:
   extracted-llm    an LLM via structured outputs — provider chosen by DOCKRISK_EXTRACT_PROVIDER:
-                     openai     OpenAI-compatible chat.completions.parse (OPENAI_BASE_URL / OPENAI_API_KEY), e.g. gpt-6-astra
+                     openai     OpenAI-compatible chat.completions.parse (OPENAI_BASE_URL / OPENAI_API_KEY), e.g. gpt-5.6-luna
                      anthropic  Claude messages.parse (ANTHROPIC_BASE_URL / ANTHROPIC_API_KEY), e.g. claude-opus-5
                      auto       openai if OPENAI_API_KEY is set, else anthropic
   extracted-rules  regex parser — always available, used as fallback and as the offline test path

@@ -12,6 +12,10 @@ rather than spending a demo on an auth error:
 
     OPENAI_BASE_URL     OPENAI_API_KEY     DOCKRISK_EXTRACT_MODEL
     OPENROUTER_BASE_URL OPENROUTER_API_KEY OPENROUTER_MODEL  # last paid rung before the rules
+
+Both rungs default to GPT-5.6 Luna, the same model under two different vendors' slugs.
+Head to head on this product's own two prompts it answered the same as GPT-6 Astra and
+in half the time, which is the trade that matters when a judge is watching the spinner.
     SPUR_BASE_URL       SPUR_API_KEY       SPUR_MODEL        # sponsor credits, never activated
 
 The `spur` rung stays implemented but is out of the default order: the sponsored key
@@ -60,7 +64,7 @@ def _rung(name: str) -> Rung | None:
             name="proxy",
             base_url=base,
             api_key=key,
-            model=os.environ.get("DOCKRISK_EXTRACT_MODEL", "gpt-6-astra").strip(),
+            model=os.environ.get("DOCKRISK_EXTRACT_MODEL", "gpt-5.6-luna").strip(),
         )
     if name == "openrouter":
         key = os.environ.get("OPENROUTER_API_KEY", "").strip()
