@@ -99,7 +99,7 @@ def _user_prompt(x: dict) -> str:
 
 
 def _openai(x: dict, model: str | None = None) -> NoticeDraft:
-    """Walk `core.llm.chain()` — SPUR first, the proxy behind it."""
+    """Walk `core.llm.chain()` — SPUR, then the proxy, then OpenRouter."""
     from . import llm
 
     def once(rung: "llm.Rung") -> NoticeDraft:

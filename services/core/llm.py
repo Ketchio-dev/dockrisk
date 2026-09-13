@@ -10,8 +10,9 @@ Order comes from `DOCKRISK_LLM_CHAIN` (default `spur,proxy`). Each named rung re
 its own base URL, key and model, and a rung with no key is skipped silently rather
 than spending a demo on an auth error:
 
-    SPUR_BASE_URL   SPUR_API_KEY   SPUR_MODEL        # sponsored credits; model id is spur-glm-5-2
-    OPENAI_BASE_URL OPENAI_API_KEY DOCKRISK_EXTRACT_MODEL
+    SPUR_BASE_URL       SPUR_API_KEY       SPUR_MODEL        # sponsored credits; spur-glm-5-2
+    OPENAI_BASE_URL     OPENAI_API_KEY     DOCKRISK_EXTRACT_MODEL
+    OPENROUTER_BASE_URL OPENROUTER_API_KEY OPENROUTER_MODEL  # last paid rung before the rules
 
 Anthropic keeps its own path in the callers; this module is the OpenAI-compatible
 side, which is what both endpoints speak.
@@ -57,12 +58,22 @@ def _rung(name: str) -> Rung | None:
             api_key=key,
             model=os.environ.get("DOCKRISK_EXTRACT_MODEL", "gpt-6-astra").strip(),
         )
+    if name == "openrouter":
+        key = os.environ.get("OPENROUTER_API_KEY", "").strip()
+        if not key:
+            return None
+        return Rung(
+            name="openrouter",
+            base_url=os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1").strip(),
+            api_key=key,
+            model=os.environ.get("OPENROUTER_MODEL", "openai/gpt-5.6-luna").strip(),
+        )
     return None
 
 
 def chain() -> list[Rung]:
     """The endpoints to try, in order, skipping any that are not configured."""
-    order = [n.strip().lower() for n in os.environ.get("DOCKRISK_LLM_CHAIN", "spur,proxy").split(",") if n.strip()]
+    order = [n.strip().lower() for n in os.environ.get("DOCKRISK_LLM_CHAIN", "spur,proxy,openrouter").split(",") if n.strip()]
     out: list[Rung] = []
     for name in order:
         r = _rung(name)

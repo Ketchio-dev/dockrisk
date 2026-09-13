@@ -124,8 +124,9 @@ def _anthropic(text: str, model: str) -> Extraction:
 
 
 def _openai(text: str, model: str | None = None) -> Extraction:
-    """Try each OpenAI-compatible endpoint in `core.llm.chain()` — SPUR first, the
-    proxy behind it. `model` overrides the rung's own model when given."""
+    """Try each OpenAI-compatible endpoint in `core.llm.chain()`, in order: SPUR's
+    sponsored credits, the proxy, then OpenRouter. `model` overrides the rung's own
+    model when given."""
     from . import llm
 
     def once(rung: "llm.Rung") -> Extraction:
