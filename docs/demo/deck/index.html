@@ -266,8 +266,11 @@ em { font-style: normal; border-bottom: 2px solid var(--money); padding-bottom: 
 /* Content slides start at the top so the heading lands at the same height on every
    slide — paging through should not make the title jump. Title and marker slides
    opt back into centring below. */
-.slide-content { padding-top: calc(var(--slide-padding) * 0.65); justify-content: flex-start; }
-.title-slide .slide-content, .marker-slide .slide-content { justify-content: center; }
+/* Optically centred, not top-hugged. A dense slide fills the height either way, so this only
+   moves the sparse ones — and a slide with its argument in the top third and a third of a
+   projector screen empty underneath reads as a slide that failed to load, which is the last
+   thing the one slide the whole talk rests on can afford. */
+.slide-content { padding-top: calc(var(--slide-padding) * 0.2); justify-content: center; }
 
 h1 { font-family: var(--font-cond); font-weight: 600; font-size: var(--title-size); line-height: 1.02; letter-spacing: -0.012em; }
 h2 { font-family: var(--font-cond); font-weight: 600; font-size: var(--h2-size); line-height: 1.1; letter-spacing: -0.005em; }
