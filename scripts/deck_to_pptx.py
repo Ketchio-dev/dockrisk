@@ -24,19 +24,22 @@ import tempfile
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 DECK = ROOT / "docs" / "demo" / "deck" / "index.html"
 OUT = ROOT / "docs" / "demo" / "deck" / "dockrisk-deck.pptx"
+PDF = ROOT / "docs" / "demo" / "deck" / "dockrisk-deck.pdf"
 SHOT = ROOT / "apps" / "web" / "scripts" / "_pptx_shot.mjs"
 W, H = 1920, 1200          # 16:10, the deck's own ratio at 1440x900
 
 RENDERER = r"""
 import puppeteer from "puppeteer-core";
-import { mkdirSync, writeFileSync } from "node:fs";
-const [url, outdir, w, h] = process.argv.slice(2);
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+const [url, outdir, w, h, posterPath] = process.argv.slice(2);
 mkdirSync(outdir, { recursive: true });
 const b = await puppeteer.launch({
   executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
   headless: true, args: ["--no-sandbox", "--disable-gpu", "--hide-scrollbars", "--font-render-hinting=none"],
 });
 const rects = {};
+const poster = posterPath && posterPath !== "-"
+  ? "data:image/png;base64," + readFileSync(posterPath).toString("base64") : null;
 const p = await b.newPage();
 await p.setViewport({ width: Number(w), height: Number(h), deviceScaleFactor: 1 });
 await p.goto(url, { waitUntil: "networkidle2", timeout: 60000 });
@@ -63,24 +66,56 @@ for (let i = 0; i < n; i++) {
     for (const el of document.querySelectorAll(".nav-dots,.keyboard-hint,.progress-bar,.edit-toggle,.edit-bar,.notes-panel")) el.style.display = "none";
   }, i);
   await new Promise(r => setTimeout(r, 500));
-  await p.screenshot({ path: `${outdir}/s${String(i).padStart(2, "0")}.png` });
-  // A slide with a <video> becomes a still here, so record where the video sat and let the
-  // PPTX put a real movie back in that rectangle — otherwise the live-demo slide is a poster.
-  const v = await p.evaluate((i) => {
+  // A <video> screenshots with its browser chrome showing — a painted play button, a painted
+  // 0:00 / 1:30, a painted progress bar. Baked into a slide that is itself a picture, that reads
+  // as a video that will not play, and the first thing anyone does is click the dead pixel. So
+  // record where the video sat, then swap it for a real frame of the film before the shot; the
+  // PPTX puts the movie back in exactly that rectangle with the same frame as its poster.
+  const v = await p.evaluate((i, poster) => {
     const s = document.querySelectorAll(".slide")[i];
     const el = s.querySelector("video");
     if (!el) return null;
     const r = el.getBoundingClientRect(), sr = s.getBoundingClientRect();
-    return { src: el.getAttribute("src"),
-             x: (r.left - sr.left) / sr.width, y: (r.top - sr.top) / sr.height,
-             w: r.width / sr.width, h: r.height / sr.height };
-  }, i);
-  if (v) rects[i] = v;
+    const rect = { src: el.getAttribute("src"),
+                   x: (r.left - sr.left) / sr.width, y: (r.top - sr.top) / sr.height,
+                   w: r.width / sr.width, h: r.height / sr.height };
+    if (poster) {
+      // A <video> with a poster and no controls paints the frame and nothing else — no play
+      // button, no scrubber, no duration. Keeping the element keeps the slide's own CSS, which
+      // swapping in an <img> did not.
+      el.removeAttribute("controls");
+      el.setAttribute("poster", poster);
+      el.load();
+    }
+    return rect;
+  }, i, poster);
+  if (v) {
+    rects[i] = v;
+    await new Promise(r => setTimeout(r, 400));   // let the swapped-in frame decode
+  }
+  await p.screenshot({ path: `${outdir}/s${String(i).padStart(2, "0")}.png` });
 }
 writeFileSync(`${outdir}/videos.json`, JSON.stringify(rects));
 console.log(n);
 await b.close();
 """
+
+
+POSTER_AT = "3"          # far enough in that the board is populated, before the first cut
+
+
+def poster_frame(tmp: pathlib.Path) -> pathlib.Path | None:
+    """One frame of the fallback film, used twice: painted into the slide picture where the
+    <video> was, and handed to PowerPoint as the movie's poster. Same frame both times, so the
+    slide looks identical whether the movie loads or not — and nothing on it looks clickable
+    that is not."""
+    src = DECK.parent / "assets" / "backup.mp4"
+    if not src.exists():
+        return None
+    out = tmp / "poster.png"
+    r = subprocess.run(["ffmpeg", "-nostdin", "-loglevel", "error", "-y", "-ss", POSTER_AT,
+                        "-i", str(src), "-frames:v", "1", str(out)], capture_output=True)
+    return out if r.returncode == 0 and out.exists() else None
 
 
 def notes_per_slide() -> list[str]:
@@ -106,6 +141,17 @@ def notes_per_slide() -> list[str]:
     return out
 
 
+def write_pdf(pngs: list[pathlib.Path]) -> None:
+    try:
+        from PIL import Image
+    except ImportError:
+        print("  (no Pillow — skipping the PDF)", file=sys.stderr)
+        return
+    pages = [Image.open(p).convert("RGB") for p in pngs]
+    pages[0].save(PDF, save_all=True, append_images=pages[1:], resolution=150.0)
+    print(f"{len(pages)} slides · {PDF.stat().st_size / 1e6:.1f} MB -> {PDF.relative_to(ROOT)}")
+
+
 def main() -> int:
     from pptx import Presentation
     from pptx.util import Emu
@@ -113,7 +159,9 @@ def main() -> int:
     SHOT.write_text(RENDERER, encoding="utf-8")
     tmp = pathlib.Path(tempfile.mkdtemp(prefix="deckpng-"))
     try:
-        r = subprocess.run(["node", str(SHOT), DECK.as_uri(), str(tmp), str(W), str(H)],
+        poster = poster_frame(tmp)
+        r = subprocess.run(["node", str(SHOT), DECK.as_uri(), str(tmp), str(W), str(H),
+                            str(poster) if poster else "-"],
                            cwd=SHOT.parent.parent, capture_output=True, text=True)
         if r.returncode != 0:
             print(r.stderr[-800:], file=sys.stderr)
@@ -141,8 +189,10 @@ def main() -> int:
                     s.shapes.add_movie(str(mp4),
                                        int(v["x"] * prs.slide_width), int(v["y"] * prs.slide_height),
                                        int(v["w"] * prs.slide_width), int(v["h"] * prs.slide_height),
-                                       poster_frame_image=None, mime_type="video/mp4")
-                    print(f"  slide {i+1}: embedded {mp4.name}")
+                                       poster_frame_image=str(poster) if poster else None,
+                                       mime_type="video/mp4")
+                    print(f"  slide {i+1}: embedded {mp4.name}"
+                          f"{' with a real poster frame' if poster else ' (no poster — grey box in PowerPoint)'}")
                 else:
                     print(f"  !! slide {i+1}: {mp4} not found", file=sys.stderr)
             note = notes[i] if i < len(notes) else ""
@@ -152,6 +202,10 @@ def main() -> int:
         size = OUT.stat().st_size / 1e6
         with_notes = sum(1 for n in notes if n)
         print(f"{len(pngs)} slides · notes on {with_notes} · {size:.1f} MB -> {OUT.relative_to(ROOT)}")
+
+        # The PDF comes off the same renders, so the two can never disagree about what a slide
+        # looks like. It carries no notes — that is what the PPTX is for.
+        write_pdf(pngs)
         return 0
     finally:
         SHOT.unlink(missing_ok=True)

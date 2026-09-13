@@ -26,7 +26,7 @@ for i in $(seq 1 60); do t=$(snap | jq -r '.sim.sim_ts[11:16]' 2>/dev/null || ec
 p $A/sim/control -d '{"speed":300,"running":true}' >/dev/null
 : > "$OUT/beats.tsv"
 
-shot 01-data "$W/data" 1440 900 12 "The carrier's own 62-day export, replayed: \$32k–43k a month of detention exposure in a thin tail past two hours"
+shot 01-data "$W/data" 1440 900 12 "The carrier's own 56-day export, replayed: \$32k–43k a month of detention exposure in a thin tail past two hours"
 until_t 09:30; pause
 V=$(snap | jq -r '.visits[]|select(.driver_name=="Driver84")|.visit_id')
 shot 02-arrival "$W/" 1440 900 10 "09:30 — B3339 enters the London DC for a 10:00 appointment. Next load feasible: +1h 10m"

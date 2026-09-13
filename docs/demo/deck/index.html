@@ -402,7 +402,12 @@ figcaption { font-size: var(--label-size); color: var(--ink-4); margin-top: 0.45
 /* Section marker slide (the live-demo break) */
 .marker-slide .slide-content { justify-content: center; align-items: flex-start; }
 .marker-slide h1 { font-size: clamp(2rem, 6.5vw, 5rem); }
-.marker-slide video { width: 100%; max-height: min(52vh, 520px); border: 1px solid var(--rule-strong); border-radius: 3px; background: var(--ink); }
+/* The film is 1440x900 — the deck's own ratio, because it is a screen recording of this app.
+   Letting it fill the content column letterboxed it inside a black box and painted two black
+   bars either side of the picture, which read as a broken embed. Size the box to the film. */
+.marker-slide video { display: block; aspect-ratio: 1440 / 900; width: min(100%, 62vh * 1.6); height: auto;
+                      margin-inline: 0; object-fit: contain;
+                      border: 1px solid var(--rule-strong); border-radius: 3px; background: var(--ink); }
 
 /* ===========================================
    PROGRESS + NAV
