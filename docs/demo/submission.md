@@ -1,72 +1,36 @@
-# Portal submission — draft (due Sun Sep 13, 2:00 PM EDT)
+# Portal submission — submitted and verified
 
-Fields per roadstarhackathon.com/portal/submissions. Paste as-is; every number here is produced by the code in
-this repo against the organizer export (`/data`, `GET /backtest`) or the synthetic sample where noted.
+Form destination: https://roadstarhackathon.com/portal/submissions
+
+**Submission status:** submitted and verified. The portal displays **DockRisk — Submitted**, with the submission time **Sep 13, 2026, 12:43 PM** (America/Toronto). The record remained after a page refresh. The portal created **Junsu Park's Team**, with one member. The GitHub, Live Demo, Video, and Pitch Deck links were checked directly in the submitted record and match the final URLs below. Evidence is saved in `.demo-logs/portal-submitted.txt`, `.demo-logs/portal-submitted.png`, `.demo-logs/portal-submitted-reloaded.txt`, and `.demo-logs/portal-submitted-reloaded.png`.
+
+The five English prose fields below match the text saved by the portal's Update Submission action and verified by reading them back from the UI. Humanizer editing is complete; the Submitted status and original Sep 13, 2026, 12:43 PM submission time remain unchanged. Link-status notes are preparation notes, not text to paste into the form.
 
 ## Project name
 
-DockRisk — detention & HOS exception desk for Southern Ontario city dispatch
+DockRisk
 
-## Elevator pitch (one sentence)
+## Elevator pitch
 
-A dock delay becomes three things at once — a defensible detention charge with its evidence, a forward
-hours-of-service check on the driver's next commitment, and a completed reassignment — because the operational
-deadline arrives before the financial one, and today nobody is watching the first.
+DockRisk shows dispatchers when a dock wait puts the next load at risk. They can compare relief drivers, offer a reassignment, and prepare detention charge drafts with the evidence attached.
 
 ## Description
 
-City dispatch loses money at the dock twice. The visible loss is detention that is never billed because the
-in/out times were never captured. The invisible loss is the next load: a driver can have driving hours left
-while a dock wait eats the 14-hour on-duty window, so the next pickup becomes infeasible *before* the two-hour
-free time even runs out. DockRisk watches both clocks on one time axis.
+A truck can still be within its free waiting allowance at a dock when the driver's next load no longer fits the hours available. We built DockRisk to make that conflict visible. The dispatch board shows the detention clock beside the next-load plan, with a map and a list ordered by urgency. A dispatcher can check each truck's duty timeline, waiting time, and warning reasons, then compare relief drivers and send an offer. The driver accepts or declines in the companion app.
 
-Replaying the organizers' own 56-day TruckMate export through our rules: **$32k–43k a month of detention
-exposure**, in a thin tail right at the two-hour line (median wait under an hour, delivery p90 2.10 h) — which is
-exactly what manual logging misses. Scored out of sample (trained on the first four weeks, scored on the last
-four), the 30-minute warning flagged **115 of the 126 stops that went past free time** before billing started
-(recall 91 %, precision 79 %).
+The app records geofence and visit events, applies the configured detention terms, and prepares charge drafts. Each draft includes the calculation, the sources of its timestamps, and any reasons it needs review. Forward hours checks use the demo's seeded duty events, estimated road delays, and waiting time. Relief candidates are checked for availability, pickup timing, trailer compatibility, capacity, and hours. Their results include reasons and historical dock-time scenarios with sample sizes.
 
-What is built and running:
+AI helps extract proposed terms from contracts and draft editable customer notices. The dispatcher confirms the terms. The rules engine calculates durations, amounts, and whether a plan fits the available hours; notice drafting has a template fallback. A separate simulator shares one scenario clock with the engine and web app.
 
-- **Geofence + detention engine.** Property and dock polygons with debounce and jitter tolerance; a visit state
-  machine (approach → entered → checked in → at dock → done → released → exited); a policy engine (free time, rate,
-  increment, clock-start rule, on-time requirement) that produces replay-safe draft charges and an invoice-style
-  evidence packet with the calculation in words, the event ledger with sources, GPS and duty samples.
-- **Canadian HOS (SOR/2005-313)** recomputed from duty events — 13/14/16 h, 10 h off with 8 h core, Cycle 1/2 —
-  and used forward: "if the driver waits the predicted N more minutes and then drives to a legal stop, what is the
-  margin?" and "is the next load still feasible at arrival / if released now / after the predicted wait?"
-- **Road events in the same check.** Open 401 closures (live Ontario 511 events, or the scenario's corridor event)
-  become extra hours on every drive leg the engine estimates. The verdict names the road when it is the
-  difference, and the clear-road margin is shown beside it.
-- **Rescue, costed against the docks that lane actually has.** When the next load is at risk, drivers are ranked
-  with explicit eligibility filters and reasons (position and ETA to the pickup window, trailer type and capacity,
-  HOS for the whole plan, road minutes on their own deadhead). The plan budgets a flat 45 minutes a dock; each
-  candidate also shows the same plan costed at the median and 90th-percentile dock times this city and stop kind
-  have historically taken, with the sample size. On our demo lane that turns a candidate with 1 h 59 m of slack
-  into one 11 minutes past a legal stop, and flips four of seven. The eligibility verdict stays on the fixed
-  allowance — a rule a dispatcher is accountable to — and the history rides beside it as advice.
-  One offer, the driver accepts on the companion app, the original stop keeps its detention evidence.
-- **Driver companion** with the ELD-style 24-hour log grid, arrival class, check-in/door/done/released taps.
-- **Dispatcher board** ranked by urgency: every truck's day on a time axis with duty segments, the free-time band,
-  the detention band, the legal-stop tick and the pickup window.
-- **Simulator** as a separate service: one virtual clock, OSRM road geometry, scripted dock dwell and corridor
-  slowdown, deterministic replay from a seed.
-- **Two AI moments, both labelled, both with a rules fallback:** a rate confirmation is read into detention terms
-  with the clause under each field; the customer detention notice is drafted from the evidence packet. The engine
-  computes every number; the dispatcher confirms.
-- **Long stops never auto-bill.** 38 stops in the export ran past six hours — 1.4% of them — and they carry 48%
-  of every hour past free time. An overnight hold, a dropped trailer and a status typed the next morning are
-  indistinguishable in this file, so those charges are computed and then held for review with the gate-exit and
-  contract evidence named. Excluding them, the same calculation lands at $17k–22k a month rather than $32k–43k;
-  both are on the page, because a single number without its assumptions is not a finding.
-- **History replay** of the whole export, anonymized, on the `/data` page.
+We analysed 56 days of the organizer's TruckMate export. Counting physical time at a stop beyond a two-hour free allowance gives an estimated $32,322 to $43,095 per month at assumed rates of $75 to $100 per hour. In a separate replay, we adjusted qualifying time for appointments, used $75 per hour, and rounded down to 15-minute increments. That produced $57,638 in potential draft charges over 56 days, or about $30,877 per 30 days. The export has no invoices or contract rates, so these estimates cannot tell us how much was unpaid or could be collected.
+
+We also trained a detention warning model on earlier completed stops and tested it on a later period. It warned before billing began on 115 of 126 overruns: 91% recall and 79% precision. Of its 145 warnings, 30 were false alarms; it missed 11 overruns. Compared with warning on every eligible stop, that is 17 fewer false alarms and 11 more misses. This test measures detention warnings. HOS conflicts and live predictions for the next load still need their own validation.
+
+GPS and duty events in the demo are simulated, and the driver companion is not a certified ELD. The prototype creates charge records and notice drafts; it does not send customer emails or connect to an invoicing system. A carrier pilot would need verified duty logs, contracts, and dispatch outcomes to test it in operation.
 
 ## Technologies used
 
-Python 3.12, FastAPI, SQLite, Shapely, pandas/openpyxl (TruckMate workbook import), httpx; Next.js 16, React 19,
-Tailwind 4, Leaflet (OpenStreetMap + Esri World Imagery), IBM Plex; OSRM (road geometry), Ontario 511 API (live
-events), Nominatim (geocoding); an OpenAI-compatible LLM endpoint for the two language tasks; Docker on a VPS
-behind Cloudflare Tunnel for the API, Vercel for the web.
+The backend uses Python 3.12, FastAPI, SQLite, Shapely, pandas/openpyxl, and httpx. The web app uses Next.js 16, React 19, Tailwind 4, Leaflet, and IBM Plex. External services provide OSRM road geometry, Ontario 511 events, Nominatim geocoding, and an OpenAI-compatible endpoint for language tasks. The web app runs on Vercel; the API runs in Docker on a VPS behind Cloudflare Tunnel.
 
 ## GitHub URL
 
@@ -74,51 +38,46 @@ https://github.com/Ketchio-dev/dockrisk
 
 ## Demo URL
 
-https://dockrisk.vercel.app — runs on the synthetic sample (same five-sheet shape, fictional customers) so no
-organizer data is public; the numbers on screen differ from the ones above, which come from the carrier's export.
+https://dockrisk.vercel.app
+
+The public demo uses a separate synthetic sample with fictional customers. Its names, counts, and amounts differ from the organizer-data analysis above. Other visitors can change the shared simulation state.
 
 ## Demo video URL
 
-**https://youtu.be/GHBjLeBPIrY**
+https://youtu.be/MQjygr_Ms6Q
 
-Unlisted, 3 min 09 s, captions burned in — `docs/demo/submission-captioned.mp4` as uploaded.
-`docs/demo/submission.mp4` is the same film with a clean picture, `submission.srt` alongside, if a sidecar
-caption track is ever wanted. `docs/demo/backup.mp4` is the 90-second fallback for a failed live demo, not
-this field.
+**Link status — verified final upload:** the revised 3:02 captioned film is Unlisted. Upload checks and playback have been verified. It combines prepared prototype captures with the corrected narration and subtitles.
+
+The current presentation uses the separate approximately 90-second `docs/demo/backup.mp4` recording as the primary demonstration on **slide 9 only**, with live presenter narration. That recording is a different asset from the revised 3:02 submission film linked above.
 
 ## Pitch deck URL
 
-**https://docs.google.com/presentation/d/1eKvBBUNn6nZiaq5Bw_sthyAeIL5YAkNa/edit?usp=sharing**
+https://drive.google.com/file/d/1jNckVV1RI5o1IwJMCqs_j0brUNdBnzkD/view
 
-16 slides, presenter notes on every slide, the 90-second fallback film embedded on the live-demo slide.
-Anyone with the link can view. PDF of the same slides, without notes:
-https://drive.google.com/file/d/1Sx7s_TEy5q8ZvJMupNfsVMgDuEPezkOD/view?usp=sharing
+**Link status — verified final PDF:** use this PDF URL in the portal's Pitch Deck URL field. The Drive preview has 16 pages, including the large recorded-demo poster on page 9. Sharing is anyone with the link, Viewer. The PDF does not play the recorded demo.
+
+Final PPTX download:
+
+https://drive.google.com/file/d/1CfwSAcBgjlEAAQQRUWHLHvM6_X1-k5Rm/view
+
+**Link status — verified final PPTX:** the uploaded file has been replaced with the final deck version and is shared as anyone with the link, Viewer.
+
+The current local deck files are `docs/demo/deck/dockrisk-deck-revised.pptx` and `docs/demo/deck/dockrisk-deck-revised.pdf`. The presentation proceeds through slides 1–8, the approximately 90-second recorded demo on slide 9, and slides 10–16. The app is optional for Q&A.
 
 ## Key learnings
 
-- **The operational deadline comes first.** In the demo scenario the next load becomes infeasible 40 minutes
-  before the free time ends. Detention timers are table stakes; connecting the dock clock to the next dispatch
-  decision, in time to act, is the product.
-- **Check that a field varies where it should before calling it a bug.** Our first "finding" — that the export's
-  leg-level `HOS_VIOLATION_AT` was dangerously stale — failed that test: it is a frozen per-driver copy, not a
-  decision field. We kept the retraction in the repo. The importer joins HOS from the driver sheet and ignores the
-  leg columns; the data-quality panel shows why.
-- **The money is in a thin tail.** Median dwell is under an hour; delivery p90 sits at 2.10 h. A desk that watches
-  averages plans for the wrong month (July's drafted charges were nearly three times August's: $41.9k vs $15.0k).
-- **Say exposure, never unbilled.** The export has no billing records. Precision in wording is what a fleet GM
-  in the room grades.
-- **Name what you did not build.** Axle-weight compliance is not buildable from a one-column Trucks sheet; trailer
-  capacity checks are. City-centroid facilities are simulation geometry and any charge against one goes to review.
-  s.76 adverse driving conditions are surfaced as "possible, review required", never applied.
+At 11:23, the next-load plan was already infeasible, with 37 minutes of free time left before billing began at noon. That is time remaining until billing, not a measured gap between two deadlines. It shows the conflict in one scenario; it does not tell us how often it happens across the fleet.
+
+We initially read the leg-level HOS values incorrectly. They are frozen copies of each driver's values, and we documented the correction. Evaluating operations properly would require duty-event history, which the export does not contain.
+
+The long stops deserve a closer look. Thirty-eight stops lasted more than six hours and accounted for roughly half the hours beyond free time. We need to understand what happened at those stops and which contract terms apply before treating them as collectible claims. More broadly, assumed rates and clock rules let us explain an estimate, but invoices and contracts are needed to establish what can be collected.
+
+Some checks also need data we do not have. The Trucks sheet has one column of truck numbers, so it cannot support an axle-weight check. Facility locations estimated from city centroids need review, as do uncertain timestamps. Candidate rankings and historical dock-time scenarios still need validation in a carrier pilot.
 
 ## Challenges faced
 
-- **No planned dates on 68 % of legs** (a 1980 sentinel) and no rates or revenue anywhere: financial impact is
-  modelled from dwell and distance and labelled as such.
-- **A single dwell per bill and stop**, not per leg — multi-leg orders otherwise inflate the count four-fold.
-- **Public map tiles under a venue network:** OpenStreetMap forbids proxying, Esri imagery does not; the satellite
-  layer goes through a disk-cached proxy warmed before the demo.
-- **Making a simulator that survives an API restart and replays identically** (retry with backoff, one clock row
-  the UI can pause, resume and reset).
-- **Keeping the model out of the arithmetic:** every LLM output is checked against the engine's figures before it
-  is shown, and the rules path runs when the endpoint is absent.
+The export had missing planned dates, placeholder dates, and no rate or billing records. We had to keep assumptions separate from observed results and count one dwell per bill and stop so that orders with multiple legs did not duplicate waiting time.
+
+We also had to keep track of where each geofence or driver event came from, including missing or uncertain evidence. The simulator and engine needed a shared clock that stayed consistent through pause, resume, and reset, while external road inputs could change between runs.
+
+For the language features, we kept numerical calculations in code and made notices editable. A template fallback keeps a draft available for review when the model is unavailable.
