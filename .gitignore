@@ -4,6 +4,9 @@ data/portal-downloads/
 # synthetic sample: fictional customers, generated values — safe to publish
 !data/sample/*.xlsx
 *.pptx
+# …except the deck we generate ourselves. The blanket rule exists to keep the organizers'
+# Presentation1.pptx out of the tree; ours is built from index.html by scripts/deck_to_pptx.py.
+!docs/demo/deck/dockrisk-deck.pptx
 *.db
 *.db-journal
 *.duckdb
