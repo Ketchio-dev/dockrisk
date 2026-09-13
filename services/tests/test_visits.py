@@ -127,8 +127,8 @@ def test_centroid_facility_is_flagged_low_confidence(db):
 def test_a_stop_past_the_six_hour_line_is_held_for_review(db):
     """The money is still computed; it is the approval that is blocked.
 
-    In the carrier's own 56 days, 49 stops ran longer than six hours — 1.1% of them — and they
-    carried 65% of every hour past free time. An overnight hold, a dropped trailer and a status
+    In the carrier's own 56 days, 38 stops ran longer than six hours — 1.4% of them — and they
+    carried 48% of every hour past free time. An overnight hold, a dropped trailer and a status
     typed in the next morning are indistinguishable in this export, so a seven-hour charge is
     only as good as its gate-exit evidence and its contract. It never auto-bills.
     """

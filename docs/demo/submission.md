@@ -1,4 +1,4 @@
-# Portal submission — draft (due Sat Sep 12, 5 PM EDT)
+# Portal submission — draft (due Sun Sep 13, 2:00 PM EDT)
 
 Fields per roadstarhackathon.com/portal/submissions. Paste as-is; every number here is produced by the code in
 this repo against the organizer export (`/data`, `GET /backtest`) or the synthetic sample where noted.
@@ -54,10 +54,10 @@ What is built and running:
 - **Two AI moments, both labelled, both with a rules fallback:** a rate confirmation is read into detention terms
   with the clause under each field; the customer detention notice is drafted from the evidence packet. The engine
   computes every number; the dispatcher confirms.
-- **Long stops never auto-bill.** 49 stops in the export ran past six hours — 1.1% of them — and they carry 65%
+- **Long stops never auto-bill.** 38 stops in the export ran past six hours — 1.4% of them — and they carry 48%
   of every hour past free time. An overnight hold, a dropped trailer and a status typed the next morning are
   indistinguishable in this file, so those charges are computed and then held for review with the gate-exit and
-  contract evidence named. Excluding them, the same calculation lands at $10.5k–14k a month rather than $32k–43k;
+  contract evidence named. Excluding them, the same calculation lands at $17k–22k a month rather than $32k–43k;
   both are on the page, because a single number without its assumptions is not a finding.
 - **History replay** of the whole export, anonymized, on the `/data` page.
 
@@ -79,14 +79,20 @@ organizer data is public; the numbers on screen differ from the ones above, whic
 
 ## Demo video URL
 
-(upload **`docs/demo/submission-captioned.mp4`** — 3 min 08 s, inside the 3–5 min rule, captions burned in —
-as an unlisted YouTube video, then paste the link here. `docs/demo/submission.mp4` is the same film with a clean
-picture and `submission.srt` alongside if a sidecar caption track is preferred. `docs/demo/backup.mp4` is the
-90-second fallback for a failed live demo, not this field.)
+**https://youtu.be/GHBjLeBPIrY**
+
+Unlisted, 3 min 09 s, captions burned in — `docs/demo/submission-captioned.mp4` as uploaded.
+`docs/demo/submission.mp4` is the same film with a clean picture, `submission.srt` alongside, if a sidecar
+caption track is ever wanted. `docs/demo/backup.mp4` is the 90-second fallback for a failed live demo, not
+this field.
 
 ## Pitch deck URL
 
-(upload `docs/demo/deck/dockrisk-deck.pdf` — 16 slides with presenter notes — to Drive and paste the link)
+**https://docs.google.com/presentation/d/1eKvBBUNn6nZiaq5Bw_sthyAeIL5YAkNa/edit?usp=sharing**
+
+16 slides, presenter notes on every slide, the 90-second fallback film embedded on the live-demo slide.
+Anyone with the link can view. PDF of the same slides, without notes:
+https://drive.google.com/file/d/1Sx7s_TEy5q8ZvJMupNfsVMgDuEPezkOD/view?usp=sharing
 
 ## Key learnings
 
@@ -97,7 +103,7 @@ picture and `submission.srt` alongside if a sidecar caption track is preferred. 
   leg-level `HOS_VIOLATION_AT` was dangerously stale — failed that test: it is a frozen per-driver copy, not a
   decision field. We kept the retraction in the repo. The importer joins HOS from the driver sheet and ignores the
   leg columns; the data-quality panel shows why.
-- **The money is in a thin tail.** Median dwell is under an hour; p90 sits at 2.03 h. A desk that watches
+- **The money is in a thin tail.** Median dwell is under an hour; delivery p90 sits at 2.10 h. A desk that watches
   averages plans for the wrong month (July's drafted charges were nearly three times August's: $41.9k vs $15.0k).
 - **Say exposure, never unbilled.** The export has no billing records. Precision in wording is what a fleet GM
   in the room grades.

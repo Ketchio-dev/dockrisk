@@ -180,7 +180,7 @@
 
 **We do not report revenue. The export has no rates.**
 
-**And stops over six hours never auto-bill. Forty-nine of them carry two thirds of the hours.**
+**And stops over six hours never auto-bill. Thirty-eight of them carry half the hours.**
 
 > 마지막 문장으로 끝냅니다. "질문 있나요?"로 끝내지 마세요.
 

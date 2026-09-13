@@ -117,7 +117,7 @@ Beat names match `scripts/record_shadow.sh`. Only `>` lines are spoken.
 > Axle weight. The truck sheet has one column. There is nothing to compute from.
 > We do not report revenue. The file has no rates.
 > And stops over six hours never bill themselves.
-> Forty-nine of those stops carry two thirds of all the hours. We do not pretend they are all real.
+> Thirty-eight of those stops carry half of all the hours. We do not pretend they are all real.
 
 ### 15 · Close
 

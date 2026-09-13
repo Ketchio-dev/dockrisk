@@ -115,7 +115,7 @@ EN: Rules do the law and the money. The model only reads text and writes text.
 EN: What we did not build, on purpose.
 EN: Axle weight. The truck sheet has one column. There is nothing to compute from.
 EN: We do not report revenue. The export has no rates.
-EN: And stops over six hours never auto-bill. Forty-nine of them carry two thirds of the hours.
+EN: And stops over six hours never auto-bill. Thirty-eight of them carry half the hours.
 EN: A tool that only shows you the wins is a tool nobody trusts on Monday.
 
 ### 11 · 질문이 오면

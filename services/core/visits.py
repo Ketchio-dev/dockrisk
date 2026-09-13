@@ -29,8 +29,10 @@ TS_COL = {"FACILITY_APPROACH": "approach_ts", "PROPERTY_ENTERED": "property_ente
           "GATE_EXITED": "gate_exited_ts"}
 MERGE_GAP_MIN = 20          # re-entry within this many minutes of a gate exit is the same visit
 THRESHOLD_BAND_MIN = 10     # +/- around free time -> review, never auto-bill
-# Past this a stop stops looking like dock time. In the carrier's own 56 days, 49 stops ran
-# longer than six hours — 1.1% of them — and they carried 65% of all the hours past free time.
+# Past this a stop stops looking like dock time. In the carrier's own 56 days, 38 stops ran
+# longer than six hours — 1.4% of them — and they carried 48% of all the hours past free time.
+# (core.analytics.exposure_summary's population: one dwell per (bill, stop kind), in region,
+# 48 h cap — the same rows behind the $32k-43k on /data, so the two numbers can be read together.)
 # An overnight hold, a dropped trailer and a status entered the next morning are not separable
 # in this export, so the money is real only if the evidence is. These never auto-bill.
 LONG_DWELL_MIN = 6 * 60
