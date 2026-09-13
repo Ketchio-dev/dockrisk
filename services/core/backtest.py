@@ -34,6 +34,15 @@ def _p(v: str | None) -> dt.datetime | None:
     return dt.datetime.fromisoformat(v) if v else None
 
 
+def _qualifying(r: dict) -> tuple[float, bool]:
+    """Use the same appointment-adjusted target for training and scoring."""
+    arrival, comp, appt = _p(r['arrival_ts']), _p(r['completion_ts']), _p(r['appointment_ts'])
+    if appt and abs((appt - arrival).total_seconds()) > APPT_SANITY_H * 3600:
+        appt = None
+    start = max(arrival, appt) if appt else arrival
+    return max(0.0, (comp - start).total_seconds() / 60), bool(appt)
+
+
 def _p_over(train: list[dict], r: dict, elapsed: float, free_min: int) -> tuple[float | None, str, int]:
     """P(dwell > free | dwell > elapsed) from the training rows, coarsening facility -> city -> kind -> all."""
     ladder = (("facility", lambda x: (x["customer"], x["city"], x["stop_kind"])),
@@ -58,8 +67,10 @@ def replay(conn, free_min: int = 120, rate: float = 75.0, increment_min: int = 1
         return {"n": 0}
     t_first = _p(rows[0]["arrival_ts"]); t_last = _p(rows[-1]["arrival_ts"])
     cutoff = t_first + dt.timedelta(days=train_days)
-    train = [r for r in rows if _p(r["arrival_ts"]) < cutoff]
+    # A stop that has arrived but not completed at cutoff has no known target yet.
+    train = [{**r, "dwell_min": _qualifying(r)[0]} for r in rows if _p(r["completion_ts"]) < cutoff]
     test = [r for r in rows if _p(r["arrival_ts"]) >= cutoff]
+    pending = [r for r in rows if _p(r["arrival_ts"]) < cutoff <= _p(r["completion_ts"])]
 
     # anonymize customers in order of first appearance; the export carries real names
     alias: dict[str, str] = {}
@@ -77,15 +88,12 @@ def replay(conn, free_min: int = 120, rate: float = 75.0, increment_min: int = 1
     appt_used = appt_missing = 0
     for r in rows:
         in_test = _p(r["arrival_ts"]) >= cutoff
-        arrival, comp, appt = _p(r["arrival_ts"]), _p(r["completion_ts"]), _p(r["appointment_ts"])
-        if appt and abs((appt - arrival).total_seconds()) > APPT_SANITY_H * 3600:
-            appt = None
-        clock_start = max(arrival, appt) if appt else arrival
-        if appt:
+        arrival = _p(r["arrival_ts"])
+        qualifying, appointment_known = _qualifying(r)
+        if appointment_known:
             appt_used += 1
         else:
             appt_missing += 1
-        qualifying = max(0.0, (comp - clock_start).total_seconds() / 60)
         over = qualifying > free_min
         billable_raw = max(0.0, qualifying - free_min)
         billable = math.floor(billable_raw / increment_min) * increment_min
@@ -97,7 +105,7 @@ def replay(conn, free_min: int = 120, rate: float = 75.0, increment_min: int = 1
             by_place[place]["over"] += 1; by_week[wk]["over"] += 1
         if billable > 0:
             by_place[place]["billable_h"] += billable / 60; by_place[place]["amount"] += amount; by_week[wk]["amount"] += amount
-            charges.append({"amount": amount, "billable_min": billable, "qualifying_min": round(qualifying, 1), "appointment_known": bool(appt)})
+            charges.append({"amount": amount, "billable_min": billable, "qualifying_min": round(qualifying, 1), "appointment_known": appointment_known})
         # the warning decision exists only for stops still on the clock at the warning point, and is scored out of sample
         if in_test and qualifying > warn_at:
             still_at_warn += 1
@@ -113,7 +121,7 @@ def replay(conn, free_min: int = 120, rate: float = 75.0, increment_min: int = 1
     days_test = max(1, (t_last - cutoff).days)
     days_all = max(1, (t_last - t_first).days)
     return {
-        "n_total": len(rows), "n_train": len(train), "n_test": len(test),
+        "n_total": len(rows), "n_train": len(train), "n_test": len(test), "n_pending_at_cutoff": len(pending),
         "window": [t_first.date().isoformat(), t_last.date().isoformat()], "cutoff": cutoff.date().isoformat(), "test_days": days_test,
         "rules": {"free_time_min": free_min, "rate_per_hour": rate, "increment_min": increment_min, "clock_start": "later of dock arrival and appointment (arrival when no sane appointment)",
                   "warning_at_min": warn_at, "warning_lead_min": warn_lead_min, "threshold": threshold, "region_only": region_only, "dwell_cap_min": cap_min},
@@ -122,11 +130,16 @@ def replay(conn, free_min: int = 120, rate: float = 75.0, increment_min: int = 1
             "true_positive": tp, "false_positive": fp, "false_negative": fn, "true_negative": tn,
             "precision": round(tp / (tp + fp), 3) if tp + fp else None, "recall": round(tp / (tp + fn), 3) if tp + fn else None,
             "lead_min": warn_lead_min,
-            "note": "model trained on stops before the cutoff only; scored on stops after it",
+            "note": "trained only on stops completed before cutoff; appointment-adjusted duration in both training and scoring; facility/city/kind baseline, not the live shift model",
+            "baseline_always_warn": {
+                "warned": still_at_warn, "true_positive": tp + fn, "false_positive": fp + tn,
+                "precision": round((tp + fn) / still_at_warn, 3) if still_at_warn else None,
+                "recall": 1.0 if tp + fn else None,
+            },
         },
         "charges": {
             "days": days_all,
-            "n": len(charges), "stops_over_free": sum(1 for r in rows if (_p(r["completion_ts"]) - _p(r["arrival_ts"])).total_seconds() / 60 > free_min),
+            "n": len(charges), "stops_over_free": sum(1 for r in rows if _qualifying(r)[0] > free_min),
             "billable_hours": round(sum(c["billable_min"] for c in charges) / 60, 1), "amount": round(sum(amounts)),
             "amount_per_30d": round(sum(amounts) * 30 / days_all), "median_charge": round(statistics.median(amounts)) if amounts else 0,
             "busiest_week": max(by_week.items(), key=lambda kv: kv[1]["amount"])[0] if by_week else None,

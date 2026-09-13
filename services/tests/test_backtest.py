@@ -14,7 +14,7 @@ def test_replay_is_out_of_sample_and_arithmetic_is_consistent(tmp_path):
     c = sqlite3.connect(db); c.row_factory = sqlite3.Row
     assert build_dwell_history(c) > 300
     out = replay(c, train_days=21)
-    assert out["n_train"] + out["n_test"] == out["n_total"] and out["n_test"] > 50
+    assert out["n_train"] + out["n_test"] + out["n_pending_at_cutoff"] == out["n_total"] and out["n_test"] > 50
     w = out["warning"]
     assert w["true_positive"] + w["false_positive"] + w["false_negative"] + w["true_negative"] == w["decisions"]
     assert w["precision"] is None or 0 <= w["precision"] <= 1
@@ -23,3 +23,27 @@ def test_replay_is_out_of_sample_and_arithmetic_is_consistent(tmp_path):
     assert abs(ch["amount"] - ch["billable_hours"] * 75) <= 5   # floored minutes x rate, nothing else (hours are rounded to 0.1)
     assert all("Customer" in p["customer"] or p["customer"] == "Unknown customer" for p in out["top_places"])  # never a real name
     assert out["not_replayed"] and "hours-of-service" in out["not_replayed"][0]
+
+
+def test_pending_outcomes_are_excluded_and_training_uses_appointment_clock():
+    from core.db import init_schema
+    c = sqlite3.connect(':memory:'); c.row_factory = sqlite3.Row
+    init_schema(c)
+    # Eight completed examples: raw dwell 180 min, but appointment-adjusted 100.
+    for i in range(8):
+        c.execute('INSERT INTO dwell_history VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
+                  (str(i), 'delivery', 'Example', 'MILTON', 'ON', '2026-07-01 09:20:00',
+                   '2026-07-01 08:00:00', '2026-07-01 11:00:00', 180, 2, 8, 1))
+    # It arrives before the July 2 08:00 cutoff but its outcome is not yet known.
+    c.execute('INSERT INTO dwell_history VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
+              ('pending', 'delivery', 'Example', 'MILTON', 'ON', None,
+               '2026-07-02 07:00:00', '2026-07-02 10:00:00', 180, 3, 7, 1))
+    c.execute('INSERT INTO dwell_history VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
+              ('test', 'delivery', 'Example', 'MILTON', 'ON', None,
+               '2026-07-03 08:00:00', '2026-07-03 09:40:00', 100, 4, 8, 1))
+    out = replay(c, train_days=1)
+    assert (out['n_train'], out['n_pending_at_cutoff'], out['n_test']) == (8, 1, 1)
+    assert out['warning']['false_positive'] == 0
+    assert out['warning']['true_negative'] == 1
+    assert out['warning']['baseline_always_warn']['false_positive'] == 1
+    assert out['charges']['stops_over_free'] == 1
