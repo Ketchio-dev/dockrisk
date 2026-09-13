@@ -40,6 +40,15 @@ const p = await b.newPage();
 await p.setViewport({ width: Number(w), height: Number(h), deviceScaleFactor: 1 });
 await p.goto(url, { waitUntil: "networkidle2", timeout: 60000 });
 await p.evaluate(() => document.fonts.ready);
+// Kill every transition and force the revealed state. Adding .visible and waiting caught
+// staggered fades mid-way and baked half-transparent figures into the slides — the deck's own
+// print stylesheet does exactly this for the same reason.
+await p.addStyleTag({ content: `
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+  .reveal, .reveal.visible { opacity: 1 !important; transform: none !important; }
+  .daybar .seg { width: var(--w) !important; }
+  .daybar .tick, .figures .figure { opacity: 1 !important; transform: none !important; }
+` });
 await new Promise(r => setTimeout(r, 2000));
 const n = await p.evaluate(() => document.querySelectorAll(".slide").length);
 for (let i = 0; i < n; i++) {
