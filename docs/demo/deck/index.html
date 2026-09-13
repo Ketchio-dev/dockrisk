@@ -47,10 +47,13 @@
     --figure-size:   clamp(1.5rem, 3.4vw, 4.2rem);
     --title-size:    clamp(1.5rem, 4vw, 4.4rem);
     --h2-size:       clamp(1.05rem, 2.2vw, 2.4rem);
-    --h3-size:       clamp(0.9rem, 1.5vw, 1.55rem);
-    --body-size:     clamp(0.76rem, 1.12vw, 1.26rem);
-    --small-size:    clamp(0.67rem, 0.92vw, 1.02rem);
-    --label-size:    clamp(0.6rem, 0.78vw, 0.9rem);
+    /* Sized for a projector and for a 1920-wide recording, not for a 27-inch desk. The old
+       preferred values put body copy at 16 px on a 1440 screen — legible up close, small from
+       the fourth row and smaller again after a video scales it. Raised about a third. */
+    --h3-size:       clamp(1.1rem, 2.1vw, 2.15rem);
+    --body-size:     clamp(1.0rem, 1.75vw, 1.85rem);
+    --small-size:    clamp(0.85rem, 1.35vw, 1.45rem);
+    --label-size:    clamp(0.75rem, 1.1vw, 1.2rem);
 
     /* Spacing — clamp() so slides breathe on a projector and compress on a laptop */
     --slide-padding: clamp(1.1rem, 3.4vw, 3.4rem);
