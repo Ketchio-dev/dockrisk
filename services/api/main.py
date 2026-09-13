@@ -594,7 +594,8 @@ def visit_detail(visit_id: int, now: datetime) -> dict:
     elapsed = clocks["physical_dwell_min"]
     # Arrival hour changes the answer: at one Milton consignee a 07:00 delivery goes past free
     # time every time in the export (n=32), a 14:00 one 12% of the time (n=17). Pooling
-    # the day together would hand the dispatcher the average of the two.
+    # the day together would hand the dispatcher the average of the two. (The workbook is the
+    # carrier's confidential data; customers are never named in this repo.)
     entered_ts = _p(v["property_entered_ts"]) or _p(v["approach_ts"])
     pred = predict_remaining(S.conn, v.get("bill_number") and (row("SELECT customer FROM orders WHERE bill_number=?", v["bill_number"]) or {}).get("customer"),
                              fac["city"] if fac else None, v["stop_kind"] if v["stop_kind"] in ("pickup", "delivery") else "delivery", elapsed,

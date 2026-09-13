@@ -3,7 +3,8 @@
 #   scripts/deploy-vps.sh            # HEAD
 # Requires Tailscale SSH access to the host and services/.env locally (copied as the container env).
 set -eu
-HOST=${DOCKRISK_VPS:-user@vps}
+# The host is not in the repo: export DOCKRISK_VPS=user@host before running this.
+HOST=${DOCKRISK_VPS:?set DOCKRISK_VPS=user@host}
 DIR=/home/ubuntu/apps/dockrisk
 cd "$(dirname "$0")/.."
 git archive --format=tar HEAD services scripts data/sample .dockerignore > /tmp/dockrisk-src.tar
