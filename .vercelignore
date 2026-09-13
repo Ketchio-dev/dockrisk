@@ -10,6 +10,7 @@
 
 /.git
 /.demo-logs
+/.logs
 /artifacts
 /analysis
 
@@ -32,3 +33,6 @@ __pycache__
 # satellite tiles are cached at request time; a read-only serverless disk cannot use a
 # prebuilt cache, and it is 11 MB of upload
 /apps/web/.tile-cache
+/apps/web/.shots
+/apps/web/scripts
+*.tsbuildinfo

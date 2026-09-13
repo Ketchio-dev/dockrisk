@@ -88,9 +88,9 @@ export default function Evidence({ params }: { params: Promise<{ visitId: string
   const segs = p.duty_timeline.map((d, i, arr) => ({ status: d.status, start: d.ts, end: arr[i + 1]?.ts ?? (exited ?? d.ts) }));
 
   return (
-    <main className="surface mx-auto max-w-2xl px-9 py-8 print:px-0 print:py-0" style={{ boxShadow: "0 0 0 1px var(--rule)" }}>
+    <main className="surface mx-auto w-full min-w-0 max-w-2xl px-4 sm:px-9 py-8 print:px-0 print:py-0" style={{ boxShadow: "0 0 0 1px var(--rule)" }}>
       <style>{`@media print { .no-print { display: none } body { background: white } }`}</style>
-      <header className="rule-b mb-6 flex items-start justify-between pb-4">
+      <header className="rule-b mb-6 flex flex-wrap items-start justify-between gap-3 pb-4">
         <div>
           <div className="mb-2 flex items-center gap-2"><Logo size={14} /><span className="label">DockRisk · detention claim · draft · {day}</span></div>
           <h1 className="display text-[22px]">{String(p.facility.name)}</h1>
@@ -111,13 +111,13 @@ export default function Evidence({ params }: { params: Promise<{ visitId: string
               <p className="label mt-1">The visit on a time axis: hatched is free time from the clock start, amber is billable. Ticks are the events in the timeline below.</p>
             </div>
           )}
-          <table className="ledger mt-4 text-sm">
+          <div className="table-scroll evidence-calculation mt-4"><table className="ledger text-sm">
             <tbody>
               <tr><td className="whitespace-nowrap pr-3 ink-3">Physical dwell</td><td className="num r whitespace-nowrap">{fmtMin(c.physical_dwell_min)}</td><td className="pl-4 ink-3">{t(v.property_entered_ts)} → {t(v.gate_exited_ts)}</td></tr>
               <tr><td className="whitespace-nowrap pr-3 ink-3">Qualifying dwell</td><td className="num r whitespace-nowrap">{fmtMin(c.qualifying_dwell_min)}</td><td className="pl-4 ink-3">clock from {RULE[String(c.policy.billing_start_rule)] ?? c.policy.billing_start_rule} ({t(c.clock_start_ts)}) to {c.policy.billing_end_rule === "gate_exit" ? "leaving the property" : "release"} ({t(c.clock_end_ts)})</td></tr>
               <tr><td className="whitespace-nowrap pr-3 ink-3">Free time</td><td className="num r whitespace-nowrap">{fmtMin(Number(c.policy.free_time_min))}</td><td className="pl-4 ink-3">{c.policy.increment_min}-min increments, rounded {String(c.policy.rounding ?? "down")}{c.policy.requires_on_time_arrival ? " · on-time arrival required" : ""} · policy: {String(c.policy.source)}</td></tr>
             </tbody>
-          </table>
+          </table></div>
           {c.review_required && (
             <div className="bar-warn mt-4 pl-3 text-sm">
               <div className="font-medium t-warn">Needs review before billing</div>
@@ -144,7 +144,7 @@ export default function Evidence({ params }: { params: Promise<{ visitId: string
 
       <section className="mb-7">
         <div className="mb-2 flex items-baseline justify-between"><h2 className="h">Ledger</h2><span className="label">every transition, who reported it, and when it was received</span></div>
-        <table className="ledger text-xs">
+        <div className="table-scroll"><table className="ledger text-xs">
           <thead><tr><th className="text-left">At</th><th className="text-left">Event</th><th className="text-left">Reported by</th><th className="text-left">Note</th></tr></thead>
           <tbody>{p.events.map((e, i) => (
             <tr key={i} className={e.superseded_by ? "line-through ink-4" : ""}>
@@ -154,10 +154,10 @@ export default function Evidence({ params }: { params: Promise<{ visitId: string
               <td className="ink-2">{e.note}</td>
             </tr>
           ))}</tbody>
-        </table>
+        </table></div>
       </section>
 
-      <section className="mb-7 grid grid-cols-2 gap-8 text-xs">
+      <section className="mb-7 grid grid-cols-1 sm:grid-cols-2 gap-8 text-xs">
         <div>
           <div className="mb-2 flex items-baseline justify-between"><h2 className="h">GPS</h2><span className="label">{p.breadcrumb_points} pings, sampled</span></div>
           <table className="ledger"><tbody>{p.breadcrumb_sample.slice(0, 12).map((b, i) => <tr key={i}><td className="mono" style={{ padding: "3px 0" }}>{b.sim_ts.slice(11, 16)}</td><td className="mono ink-2" style={{ padding: "3px 0" }}>{b.lat.toFixed(5)}, {b.lon.toFixed(5)}</td><td className="num r" style={{ padding: "3px 0" }}>{Math.round(b.speed_kmh)} km/h</td></tr>)}</tbody></table>

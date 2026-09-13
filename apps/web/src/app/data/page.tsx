@@ -41,7 +41,7 @@ function DwellChart({ h, free }: { h: NonNullable<Exposure["histogram"]>; free: 
   const ticks: number[] = []; for (let v = 0; v <= max; v += step) ticks.push(v);
   const over = h.counts.reduce((acc, c, i) => acc + (i * h.bin_min >= free ? c : 0), 0) + h.overflow;
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Dwell time distribution">
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[600px]" role="img" aria-label="Dwell time distribution">
       {ticks.map((v) => <g key={v}><line x1={PL} x2={W - PR} y1={y(v)} y2={y(v)} stroke="var(--rule)" /><text x={PL - 6} y={y(v) + 3} fontSize="9" textAnchor="end" fill="var(--ink-4)" fontFamily="var(--font-mono)">{v}</text></g>)}
       {h.counts.map((c, i) => {
         const past = i * h.bin_min >= free;
@@ -66,7 +66,7 @@ function WeekChart({ weeks }: { weeks: Backtest["by_week"] }) {
   const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const wk = (s: string) => { const d = new Date(s + "T00:00:00"); return `${d.getDate()} ${MON[d.getMonth()]}`; };
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Drafted charges per week">
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[600px]" role="img" aria-label="Drafted charges per week">
       {[0, max / 2, max].map((v, i) => <g key={i}><line x1={PL} x2={W - PR} y1={y(v)} y2={y(v)} stroke="var(--rule)" /><text x={PL - 6} y={y(v) + 3} fontSize="9" textAnchor="end" fill="var(--ink-4)" fontFamily="var(--font-mono)">{v >= 1000 ? `$${Math.round(v / 1000)}k` : `$${Math.round(v)}`}</text></g>)}
       {weeks.map((w, i) => (
         <g key={w.week}>
@@ -114,7 +114,7 @@ export default function DataPage() {
   };
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-5">
+    <main className="mx-auto w-full min-w-0 max-w-3xl px-6 py-5">
       <PageHeader title="The data" kicker={ds ? `${ds.source} · ${ds.window[0]?.slice(0, 10)} to ${ds.window[1]?.slice(0, 10)}` : "Carrier export"} current="/data" />
 
       <section className="mb-9">
@@ -138,28 +138,28 @@ export default function DataPage() {
 
       {ex?.histogram && (
         <section className="mb-9">
-          <div className="mb-2 flex items-baseline justify-between"><h2 className="h">How long trucks waited</h2><span className="label">{ex.histogram.n.toLocaleString()} stops · one wait per bill and stop</span></div>
-          <DwellChart h={ex.histogram} free={free} />
+          <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"><h2 className="h">How long trucks waited</h2><span className="label">{ex.histogram.n.toLocaleString()} stops · one wait per bill and stop</span></div>
+          <div className="table-scroll"><DwellChart h={ex.histogram} free={free} /></div>
           <p className="mt-1 text-xs ink-3">Most waits end inside the first hour. The money sits in the thin tail to the right of the free-time line, which is what manual logging misses.</p>
         </section>
       )}
 
       {ex?.by_kind && (
         <section className="mb-9">
-          <div className="mb-2 flex items-baseline justify-between"><h2 className="h">By dock</h2></div>
-          <table className="ledger text-sm">
+          <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"><h2 className="h">By dock</h2></div>
+          <div className="table-scroll"><table className="ledger text-sm">
             <thead><tr><th className="text-left">Dock</th><th className="r">Stops</th><th className="r">Typical wait</th><th className="r">One in ten waits</th><th className="r">Past free time</th></tr></thead>
             <tbody>{Object.entries(ex.by_kind).map(([k, v]) => (
               <tr key={k}><td>{k === "pickup" ? "Shipper (pickup)" : "Consignee (delivery)"}</td><td className="num r">{v.n.toLocaleString()}</td><td className="num r">{fmtMin(v.median_min)}</td><td className="num r">{fmtMin(v.p90_min)}</td><td className="num r">{v.over_free_pct}%<span className="ink-3"> · {v.billable_hours} h</span></td></tr>
             ))}</tbody>
-          </table>
+          </table></div>
           <p className="mt-2 text-xs ink-3">Earliest dock arrival to the recorded pickup or delivery completion.</p>
         </section>
       )}
 
       {bt && bt.n_total > 0 && (
         <section className="mb-9">
-          <div className="mb-2 flex items-baseline justify-between"><h2 className="h">If DockRisk had been running</h2><span className="label">every stop in the export replayed through the rules · {bt.window[0]} to {bt.window[1]}</span></div>
+          <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"><h2 className="h">If DockRisk had been running</h2><span className="label">every stop in the export replayed through the rules · {bt.window[0]} to {bt.window[1]}</span></div>
           <div className="rule-t rule-b py-4">
             <div className="display text-[34px]">{bt.warning.true_positive} <span className="text-[18px] ink-3">of {bt.warning.exceeded}</span></div>
             <div className="mt-1 max-w-2xl text-sm ink-2">stops that went past free time were flagged <span className="num" style={{ color: "var(--ink)" }}>{bt.warning.lead_min} min</span> before billing started. Precision {bt.warning.precision != null ? Math.round(bt.warning.precision * 100) : "—"}% — the model was trained on stops before {bt.cutoff} and scored on the rest.</div>
@@ -170,9 +170,9 @@ export default function DataPage() {
               <span>{bt.charges.with_appointment} with an appointment on file, {bt.charges.without_appointment} clocked from arrival</span>
             </div>
           </div>
-          {bt.by_week.length > 1 && <div className="mt-3"><WeekChart weeks={bt.by_week} /></div>}
+          {bt.by_week.length > 1 && <div className="table-scroll mt-3"><WeekChart weeks={bt.by_week} /></div>}
           <p className="mt-1 text-xs ink-3">Drafted charges by the week the truck arrived. Detention is bursty: the busiest week is several times the quietest, so a desk that only watches averages plans for the wrong month.</p>
-          <table className="ledger mt-4 text-xs">
+          <div className="table-scroll mt-4"><table className="ledger text-xs">
             <thead><tr><th className="text-left">Where the charges come from</th><th className="r">Stops</th><th className="r">Over free</th><th className="r">Typical overrun</th><th className="r">Billable</th><th className="r">Drafted</th></tr></thead>
             <tbody>{bt.top_places.slice(0, 6).map((p) => (
               <tr key={`${p.customer}-${p.city}-${p.stop_kind}`}>
@@ -180,7 +180,7 @@ export default function DataPage() {
                 <td className="num r">{p.stops}</td><td className="num r">{p.over_free}</td><td className="num r">{p.median_over_h != null ? `${p.median_over_h} h` : "—"}</td><td className="num r">{p.billable_hours} h</td><td className="display r text-[14px]">${p.amount.toLocaleString()}</td>
               </tr>
             ))}</tbody>
-          </table>
+          </table></div>
           <p className="mt-2 text-xs ink-3">Customers are anonymized here. Not replayed, because the export cannot support it: {bt.not_replayed.map((s) => s.split(" (")[0]).join("; ")}.</p>
         </section>
       )}
@@ -193,11 +193,11 @@ export default function DataPage() {
       )}
 
       <section className="mb-7">
-        <div className="mb-2 flex items-baseline justify-between"><h2 className="h">Blocks a feature</h2><span className="label">what the export cannot support</span></div>
+        <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"><h2 className="h">Blocks a feature</h2><span className="label">what the export cannot support</span></div>
         <div className="rule-t">{blocks.map((r) => <Finding key={r.rule} r={r} />)}</div>
       </section>
       <section className="mb-7">
-        <div className="mb-2 flex items-baseline justify-between"><h2 className="h">Worth knowing</h2><span className="label">handled, but changes how numbers should be read</span></div>
+        <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"><h2 className="h">Worth knowing</h2><span className="label">handled, but changes how numbers should be read</span></div>
         <div className="rule-t">{watch.map((r) => <Finding key={r.rule} r={r} />)}</div>
       </section>
       <section>

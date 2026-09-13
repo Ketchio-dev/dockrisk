@@ -31,6 +31,36 @@ function truckIcon(kind: "moving" | "stopped" | "facility", color: string, headi
   return L.divIcon({ className: "truck-icon", html: `<svg width="${s}" height="${s}" viewBox="0 0 ${s} ${s}" style="display:block;filter:drop-shadow(0 1px 1px rgba(0,0,0,.25))">${body}</svg>`, iconSize: [s, s], iconAnchor: [c, c], tooltipAnchor: [c, 0] });
 }
 
+function TruckMarker({ truck: f, selected, onSelect }: {
+  truck: FleetRow; selected: boolean; onSelect: (unit: string | null) => void;
+}) {
+  const marker = useRef<L.Marker>(null);
+  const atDock = !!f.visit;
+  const moving = (f.speed_kmh ?? 0) > 3;
+  const hosWarn = f.hos && f.hos.remaining_onduty_h < 1.5;
+  const color = hosWarn ? "#b42318" : atDock ? "#b54708" : moving ? "#2a78d6" : "#75746c";
+  const kind = atDock ? "facility" : moving ? "moving" : "stopped";
+  // Leaflet replaces a divIcon's SVG whenever setIcon runs. A new icon on every
+  // snapshot made the entire fleet flash, including trucks that had not moved.
+  const icon = useMemo(() => truckIcon(kind, color, null, selected), [kind, color, selected]);
+  const position = useMemo<[number, number]>(() => [f.lat, f.lon], [f.lat, f.lon]);
+  useEffect(() => {
+    const center = selected ? 13 : 9;
+    marker.current?.getElement()?.querySelector("g")?.setAttribute("transform", `rotate(${f.heading ?? 0} ${center} ${center})`);
+  }, [f.heading, icon, selected]);
+  return (
+    <Marker ref={marker} position={position} icon={icon} zIndexOffset={selected ? 1000 : 0}
+      eventHandlers={{ click: () => onSelect(selected ? null : f.unit) }}>
+      {selected && <Tooltip permanent direction="right" offset={[12, 0]} className="tag">{f.driver_name ?? f.unit} · {f.unit}</Tooltip>}
+      <Tooltip direction="top" offset={[0, -10]}>
+        <b>{f.unit}</b> {f.driver_name} · {Math.round(f.speed_kmh)} km/h · {f.duty_status}
+        {f.hos && <><br />on-duty left {f.hos.remaining_onduty_h}h · drive {f.hos.remaining_drive_h}h · {f.hos.binding}</>}
+        {f.visit && <><br />visit #{f.visit.visit_id} {f.visit.state}</>}
+      </Tooltip>
+    </Marker>
+  );
+}
+
 function FlyTo({ target }: { target: { lat: number; lon: number; zoom: number } | null }) {
   const map = useMap();
   useEffect(() => { if (target) map.flyTo([target.lat, target.lon], target.zoom, { duration: 0.8 }); }, [target, map]);
@@ -125,24 +155,7 @@ export default function FleetMap({ fleet, facilities, exceptions, selected, onSe
           </CircleMarker>
         ))}
         {crumbs.length > 1 && <Polyline positions={crumbs} pathOptions={{ color: "#2a78d6", weight: 3, opacity: 0.85 }} />}
-        {fleet.map((f) => {
-          const atDock = !!f.visit; const isSel = f.unit === selected;
-          const moving = (f.speed_kmh ?? 0) > 3;
-          const hosWarn = f.hos && f.hos.remaining_onduty_h < 1.5;
-          const color = hosWarn ? "#b42318" : atDock ? "#b54708" : moving ? "#2a78d6" : "#75746c";
-          const kind = atDock ? "facility" : moving ? "moving" : "stopped";
-          return (
-            <Marker key={f.unit} position={[f.lat, f.lon]} icon={truckIcon(kind, color, f.heading, isSel)} zIndexOffset={isSel ? 1000 : 0}
-              eventHandlers={{ click: () => onSelect(isSel ? null : f.unit) }}>
-              {isSel && <Tooltip permanent direction="right" offset={[12, 0]} className="tag">{f.driver_name ?? f.unit} · {f.unit}</Tooltip>}
-              <Tooltip direction="top" offset={[0, -10]}>
-                <b>{f.unit}</b> {f.driver_name} · {Math.round(f.speed_kmh)} km/h · {f.duty_status}
-                {f.hos && <><br />on-duty left {f.hos.remaining_onduty_h}h · drive {f.hos.remaining_drive_h}h · {f.hos.binding}</>}
-                {f.visit && <><br />visit #{f.visit.visit_id} {f.visit.state}</>}
-              </Tooltip>
-            </Marker>
-          );
-        })}
+        {fleet.map((f) => <TruckMarker key={f.unit} truck={f} selected={f.unit === selected} onSelect={onSelect} />)}
       </MapContainer>
       <div className="absolute right-3 top-3 z-[1000] flex gap-1.5">
         <button onClick={() => setShowMinor((s) => !s)} className="btn btn-sm" title="Ontario 511 live events on 400-series highways in the region">

@@ -87,7 +87,7 @@ export function DayBar({ window: [t0, t1], now, segments, bands = [], marks = []
   };
   const barH = compact ? 8 : 14;
   const LH = 12;                                          // one label line
-  const top = compact ? 0 : 4 + aboveLines * LH;          // row 0: mark labels, one or two lines
+  const top = compact ? 0 : 8 + aboveLines * LH;          // row 0: mark labels, one or two lines
   const axisY = top + barH + 4;                           // row 2: hour axis
   const belowY = axisY + 14;                              // row 3: band labels, one or two lines
   const total = compact ? barH : belowY + belowLines * LH;
@@ -129,7 +129,7 @@ export function DayBar({ window: [t0, t1], now, segments, bands = [], marks = []
         </>
       )}
       {!compact && hours.map((t) => (
-        <span key={t} className="mono absolute text-[10px] leading-none" style={{ top: axisY, left: pct(t), transform: "translateX(-50%)", color: "var(--ink-4)" }}>
+        <span key={t} className="mono absolute text-[10px] leading-none" style={{ top: axisY, left: pct(t), transform: `translateX(${t === hours[0] ? "0" : t === hours[hours.length - 1] ? "-100%" : "-50%"})`, color: "var(--ink-4)" }}>
           {hourLabel(t)}
         </span>
       ))}
@@ -160,7 +160,7 @@ export function DayBarKey({ visit = true }: { visit?: boolean }) {
  */
 export function LogGrid({ day, now, segments }: { day: string; now: string; segments: Seg[] }) {
   const t0 = ms(`${day} 00:00:00`), t1 = t0 + 24 * H, n = ms(now);
-  const W = 470, PL = 46, PR = 34, PT = 4, RH = 22, rows = ["off", "sleeper", "driving", "on_duty"];
+  const W = 470, PL = 46, PR = 44, PT = 4, RH = 22, rows = ["off", "sleeper", "driving", "on_duty"];
   const x = (t: number) => PL + ((Math.max(t0, Math.min(t1, t)) - t0) / (t1 - t0)) * (W - PL - PR);
   const y = (s: string) => PT + rows.indexOf(s) * RH + RH / 2;
   const segs = segments.map((s) => ({ ...s, a: Math.max(ms(s.start), t0), b: Math.min(ms(s.end), Math.min(t1, n)) })).filter((s) => s.b > s.a).sort((a, b) => a.a - b.a);
@@ -175,7 +175,7 @@ export function LogGrid({ day, now, segments }: { day: string; now: string; segm
         <g key={r}>
           <rect x={PL} y={PT + i * RH} width={W - PL - PR} height={RH} fill={i % 2 ? "var(--surface-2)" : "var(--surface)"} stroke="var(--rule)" strokeWidth="1" />
           <text x={PL - 6} y={PT + i * RH + RH / 2 + 3.5} fontSize="10" textAnchor="end" fill="var(--ink-2)" fontFamily="var(--font-sans)">{{ off: "Off", sleeper: "Sleeper", driving: "Driving", on_duty: "On duty" }[r]}</text>
-          <text x={W - PR + 6} y={PT + i * RH + RH / 2 + 3.5} fontSize="10" textAnchor="start" fill="var(--ink-3)" fontFamily="var(--font-mono)">{totals[i] > 0 ? `${totals[i].toFixed(1)}h` : ""}</text>
+          <text x={W - 4} y={PT + i * RH + RH / 2 + 3.5} fontSize="10" textAnchor="end" fill="var(--ink-3)" fontFamily="var(--font-mono)">{totals[i] > 0 ? `${totals[i].toFixed(1)}h` : ""}</text>
         </g>
       ))}
       {Array.from({ length: 25 }, (_, h) => (

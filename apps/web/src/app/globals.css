@@ -86,6 +86,12 @@ table.ledger { width: 100%; border-collapse: collapse; }
 table.ledger th { font-weight: 400; font-size: 11px; color: var(--ink-3); padding-top: 4px; padding-bottom: 4px; border-bottom: 1px solid var(--rule); }
 table.ledger td { padding-top: 7px; padding-bottom: 7px; border-bottom: 1px solid var(--rule); vertical-align: top; }
 table.ledger .r { text-align: right; }
+/* There was no horizontal padding at all, so right-aligned columns ran into each other —
+   "BillableDrafted" with no space, and two-word headers wrapping mid-phrase to fit a column
+   sized by its digits. Gutter every column but the first, and keep a header on one line: the
+   heading, not the number, is what decides how wide a column needs to be. */
+table.ledger th + th, table.ledger td + td { padding-left: 14px; }
+table.ledger th { white-space: nowrap; }
 
 /* leaflet on a light page. Street tiles are OpenStreetMap, desaturated so the cartography recedes and the
    trucks, outlines and 511 events are the only colour. */
@@ -133,3 +139,18 @@ table.ledger .r { text-align: right; }
 }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+/* Keep wide evidence tables locally scrollable, without widening the page. */
+.table-scroll { width: 100%; min-width: 0; overflow-x: auto; }
+.table-scroll table { min-width: 600px; }
+.table-scroll .charges-ledger { min-width: 480px; }
+.charges-ledger .c-qual { width: 80px; }
+.charges-ledger .c-bill { width: 62px; }
+.charges-ledger .c-amt { width: 76px; }
+.charges-ledger .c-status { width: 100px; }
+.btn-text { padding-left: 0; text-decoration: underline; text-underline-offset: 3px; }
+@media (min-width: 640px) {
+  .board-row-3 { grid-template-columns: minmax(0, 1fr) minmax(80px, .7fr) 150px; }
+}
+
+.evidence-calculation table { min-width: 500px; }
